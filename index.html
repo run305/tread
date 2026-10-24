@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Intervals">
+<meta name="theme-color" content="#0a0d11">
+<title>Treadmill Interval Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F2F4F7;--panel:#FFFFFF;--panel-2:#E9EDF2;--line:#D3DAE3;--text:#111820;--muted:#4E5F70;--faint:#6B7C8D;
+  --work:#E2650A;--work-soft:rgba(226,101,10,.12);--on-work:#fff;
+  --recover:#14955A;--recover-soft:rgba(20,149,90,.12);
+  --easy:#1F6FD1;--easy-soft:rgba(31,111,209,.10);
+  --hero-cell:rgba(0,0,0,.04);
+  --radius:14px;
+  --display:"Barlow Condensed","Barlow","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",-apple-system,"Segoe UI",system-ui,sans-serif;
+  color-scheme:light;box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0a0d11;--panel:#141a21;--panel-2:#1a212b;--line:#263040;--text:#f2f5f8;--muted:#9fb0c1;--faint:#7a8b9c;
+  --work:#ff7a1a;--work-soft:rgba(255,122,26,.14);--on-work:#16100a;
+  --recover:#35d07f;--recover-soft:rgba(53,208,127,.12);--easy:#58a6ff;--easy-soft:rgba(88,166,255,.12);--hero-cell:rgba(0,0,0,.28);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0a0d11;--panel:#141a21;--panel-2:#1a212b;--line:#263040;--text:#f2f5f8;--muted:#9fb0c1;--faint:#7a8b9c;
+  --work:#ff7a1a;--work-soft:rgba(255,122,26,.14);--on-work:#16100a;
+  --recover:#35d07f;--recover-soft:rgba(53,208,127,.12);--easy:#58a6ff;--easy-soft:rgba(88,166,255,.12);--hero-cell:rgba(0,0,0,.28);color-scheme:dark}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:400 17px/1.45 var(--body);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:none}
+:focus-visible{outline:3px solid var(--easy);outline-offset:2px}
+.cond{font-family:var(--display)}.tnum{font-variant-numeric:tabular-nums}
+.wrap{max-width:560px;margin:0 auto;padding:16px 16px 120px}
+.k-easy{--c:var(--easy);--cs:var(--easy-soft)}.k-work{--c:var(--work);--cs:var(--work-soft)}.k-recover{--c:var(--recover);--cs:var(--recover-soft)}
+.lab{font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+
+/* bars */
+.bar{display:flex;align-items:center;gap:8px;min-height:52px;margin-bottom:10px}
+.bar h1{font:700 1.7rem/1.1 var(--display);margin:0;flex:1}
+.bar h2{font:700 1.35rem/1.15 var(--body);margin:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ibtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:44px;height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:var(--panel);font-weight:600;font-size:15px}
+.ibtn svg{width:20px;height:20px}
+.ibtn.ghost{border-color:transparent;background:transparent}
+.ibtn.solid{background:var(--text);color:var(--bg);border-color:var(--text)}
+
+/* strip */
+.strip{display:flex;gap:2px;height:12px;align-items:flex-end;border-radius:4px;overflow:hidden}
+.strip i{display:block;background:var(--c);height:55%;min-width:2px;border-radius:2px}
+.strip i.k-work{height:100%}
+
+/* library */
+.lib{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.lib button{width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px 16px;display:grid;gap:8px}
+.lib .nm{font:700 1.15rem/1.2 var(--body)}
+.meta{color:var(--muted);font-size:15px;display:flex;flex-wrap:wrap;gap:4px 14px}
+.empty{background:var(--panel);border:1px dashed var(--line);border-radius:var(--radius);padding:28px 20px;text-align:center;color:var(--muted)}
+.dock{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));background:linear-gradient(transparent,var(--bg) 30%);display:flex;justify-content:center;z-index:5}
+.dock .inner{display:flex;gap:10px;width:100%;max-width:528px}
+.btn{flex:1;min-height:52px;border-radius:var(--radius);background:var(--panel-2);border:1px solid var(--line);font-weight:600;font-size:1rem;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 16px}
+.btn svg{width:20px;height:20px}
+.btn.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
+.btn.go{background:var(--work);color:var(--on-work);border:0;font:700 1.5rem/1 var(--display);letter-spacing:.06em;min-height:68px;box-shadow:0 6px 24px var(--work-soft)}
+.btn.small{flex:0 1 auto;min-height:44px;font-size:15px}
+.btn.danger{background:var(--work);color:var(--on-work);border:0}
+
+/* idle summary (from your tracker) */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px}
+.stat .v{font-size:1.35rem;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+.note{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;color:var(--muted);font-size:.95rem;line-height:1.5;margin-bottom:16px;white-space:pre-wrap}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+
+/* segment list (from your tracker) */
+.list-title{margin:18px 2px 10px}
+ol.segs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+ol.segs li{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+ol.segs .dot{width:12px;height:12px;border-radius:50%;flex:none;background:var(--c)}
+ol.segs .main{flex:1;min-width:0}
+ol.segs .name{font-weight:600;line-height:1.25}
+ol.segs .detail{color:var(--muted);font-size:.88rem}
+ol.segs .end{text-align:right;flex:none}
+ol.segs .end .v{font-weight:700;font-size:1.1rem;font-variant-numeric:tabular-nums}
+ol.segs .end .lab{font-size:.62rem}
+ol.segs .tick{flex:none;width:26px;height:26px;border-radius:50%;display:none;align-items:center;justify-content:center;color:var(--bg);background:var(--recover)}
+ol.segs li.is-done{opacity:.55}
+ol.segs li.is-done .tick{display:flex}
+ol.segs li.is-done .end{display:none}
+ol.segs li.is-current{border-color:var(--text);background:var(--panel-2);box-shadow:0 0 0 1px var(--text) inset}
+ol.segs li.is-current .name::after{content:"NOW";margin-left:8px;font-size:.62rem;font-weight:700;letter-spacing:.12em;color:var(--bg);background:var(--text);border-radius:4px;padding:2px 5px;vertical-align:2px}
+ol.segs .rephead{background:transparent;border:0;padding:6px 2px 0;color:var(--faint)}
+
+/* run view (from your tracker) */
+.timers{display:flex;align-items:stretch;gap:8px;margin-bottom:12px}
+.timer-box{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:8px 12px}
+.timer-box .v{font-size:1.7rem;font-weight:600;line-height:1.15;font-variant-numeric:tabular-nums}
+.btn-pause{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);padding:0 18px;font-size:1rem;font-weight:600}
+.paused-banner{text-align:center;font-weight:700;letter-spacing:.2em;color:var(--work);font-size:.85rem;margin:0 0 10px}
+.hero{border-radius:18px;padding:20px 18px 18px;margin-bottom:12px;border:1.5px solid var(--c);background:linear-gradient(180deg,var(--cs),var(--panel) 55%)}
+.hero .kind{font-size:.8rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--c)}
+.hero .seg-name{font:700 clamp(2.6rem,14vw,4.6rem)/.98 var(--display);text-transform:uppercase;margin:2px 0 6px;overflow-wrap:anywhere}
+.hero .seg-count{color:var(--muted);font-size:1rem;font-weight:600}
+.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.hero-cell{background:var(--hero-cell);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
+.hero-cell .v{font-size:clamp(1.8rem,9vw,2.7rem);font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+.hero-cell .v small{font-size:.45em;font-weight:600;color:var(--muted)}
+.hero-cell .sub{font-size:.85rem;color:var(--muted)}
+.spd-row{display:flex;align-items:center;gap:6px}
+.spd-row button{width:36px;height:36px;flex:none;border-radius:50%;background:var(--panel-2);border:1px solid var(--line);font:700 22px/1 var(--display)}
+.hero .check{margin:12px 0 0;color:var(--muted);font-size:1rem;line-height:1.45}
+.seg-progress{height:8px;border-radius:99px;background:rgba(127,127,127,.18);margin-top:14px;overflow:hidden}
+.seg-progress>div{height:100%;width:0%;border-radius:99px;background:var(--c);transition:width .25s linear}
+.seg-progress.over>div{background:repeating-linear-gradient(45deg,var(--c) 0 8px,transparent 8px 14px)}
+.est{display:flex;justify-content:space-between;color:var(--muted);font-size:.85rem;margin-top:6px;font-variant-numeric:tabular-nums}
+.upnext{display:flex;align-items:baseline;gap:10px;background:var(--panel);border:1px dashed var(--line);border-radius:var(--radius);padding:11px 14px;margin-bottom:14px}
+.upnext .v{font-weight:600}.upnext .v span{color:var(--muted);font-weight:500}
+.controls{display:flex;gap:10px;align-items:stretch;margin-bottom:12px}
+.btn-back{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);padding:0 18px;font-size:1rem;font-weight:600;color:var(--muted)}
+.btn-back:disabled{opacity:.35}
+.btn-next{flex:1;padding:20px 12px;border-radius:var(--radius);background:var(--work);color:var(--on-work);font:700 1.6rem/1.05 var(--display);letter-spacing:.05em;box-shadow:0 6px 24px var(--work-soft)}
+.btn-next small{display:block;font:600 .85rem/1.3 var(--body);letter-spacing:0;opacity:.8}
+.btn-next:active,.btn.go:active{transform:scale(.985)}
+.runfoot{display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--faint);font-size:.85rem}
+.runfoot button{background:none;color:var(--muted);font-weight:600;text-decoration:underline;padding:8px 0}
+.wake{display:flex;align-items:center;gap:6px}
+.wake.bad{color:var(--work);font-weight:600}
+
+/* done (from your tracker) */
+.done{text-align:center;background:var(--panel);border:1.5px solid var(--recover);border-radius:18px;padding:30px 20px 24px;margin-bottom:20px}
+.done .check-mark{width:64px;height:64px;margin:0 auto 12px;border-radius:50%;background:var(--recover-soft);border:2px solid var(--recover);display:flex;align-items:center;justify-content:center;color:var(--recover)}
+.done h2{margin:0 0 6px;font:700 2rem/1.1 var(--display)}
+.done p{margin:0 0 4px;color:var(--muted);font-size:1.05rem}
+.done .total-time{font-size:1.3rem;color:var(--text);font-weight:700;margin:10px 0 18px;font-variant-numeric:tabular-nums}
+
+/* editor */
+.field{display:grid;gap:6px;margin-bottom:12px}
+.field label{font-size:14px;color:var(--muted);font-weight:600}
+input[type=text],input:not([type]),textarea,select{width:100%;font-size:16px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:44px}
+textarea{resize:vertical;line-height:1.4}
+textarea.code{font:15px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;min-height:260px}
+.tabs{display:flex;background:var(--panel-2);border-radius:12px;padding:3px;margin:4px 0 14px}
+.tabs button{flex:1;height:38px;border-radius:9px;background:transparent;font-weight:600;font-size:15px;color:var(--muted)}
+.tabs button[aria-pressed=true]{background:var(--panel);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.estep{background:var(--panel);border:1px solid var(--line);border-left:6px solid var(--c);border-radius:12px;padding:10px;display:grid;gap:8px}
+.erow{display:grid;grid-template-columns:1fr 128px;gap:8px}
+.egrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mini{display:grid;gap:3px;min-width:0}
+.mini span{font-size:12px;color:var(--muted);font-weight:600}
+.mini input,.mini select{padding:8px;text-align:center}
+.etools{display:flex;gap:4px;justify-content:flex-end}
+.etools button{width:38px;height:34px;border-radius:8px;background:var(--panel-2);display:inline-flex;align-items:center;justify-content:center}
+.etools svg{width:18px;height:18px}
+.erep{border:2px dashed var(--line);border-radius:16px;padding:10px;display:grid;gap:8px}
+.erep .rhead{display:flex;align-items:center;gap:8px}
+.erep .rhead input{width:72px;text-align:center}
+.eitems{display:grid;gap:10px;margin-bottom:12px}
+.err{color:var(--work);font-weight:600;margin:6px 0}
+.help{font-size:14px;color:var(--muted);background:var(--panel-2);border-radius:12px;padding:12px 14px;margin:10px 0}
+.help code{font:13px ui-monospace,Menlo,monospace;color:var(--text)}
+.help pre{font:13px/1.5 ui-monospace,Menlo,monospace;color:var(--text);margin:8px 0 0;white-space:pre-wrap}
+
+/* sheets */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--bg);width:100%;max-width:560px;max-height:92%;overflow:auto;border-radius:20px 20px 0 0;padding:14px 16px calc(20px + env(safe-area-inset-bottom,0px))}
+.sheet h3{font:700 1.7rem/1 var(--display);margin:6px 0 14px}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.toggle small{display:block;color:var(--muted);font-size:14px}
+.sw{appearance:none;-webkit-appearance:none;width:52px;height:32px;border-radius:16px;background:var(--line);position:relative;flex:none;transition:background .15s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .15s}
+.sw:checked{background:var(--recover)}.sw:checked::after{transform:translateX(20px)}
+.seg{display:flex;background:var(--panel-2);border-radius:10px;padding:3px;flex:none}
+.seg button{background:transparent;min-height:34px;padding:4px 12px;border-radius:8px;font-weight:600;font-size:14px;color:var(--muted)}
+.seg button[aria-pressed=true]{background:var(--panel);color:var(--text)}
+.toggle.col{flex-direction:column;align-items:stretch}
+.toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;z-index:40;max-width:90%;text-align:center}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function(){
+"use strict";
+const KM=1.609344, MI=1609.344, MPS=0.44704;
+const DU={m:1,mi:MI,km:1000};
+const TYPES={warmup:"Warm-up",work:"Work",recovery:"Recovery",cooldown:"Cool-down"};
+const KIND={warmup:"easy",cooldown:"easy",work:"work",recovery:"recover"};
+const NOSLEEP_SRC="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAXAbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAB9AAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAAAll0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAB9AAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAABAAAAAQAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAfQAAAAAAABAAAAAAHRbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAABAAAAAgABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABfG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAATxzdGJsAAAAuHN0c2QAAAAAAAAAAQAAAKhhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAABAAEABIAAAASAAAAAAAAAABFUxhdmM2MC4zMS4xMDIgbGlieDI2NAAAAAAAAAAAAAAAGP//AAAALmF2Y0MBQsAK/+EAFmdCwArZHsBEAAADAAQAAAMACDxImSABAAVoy4PLIAAAABBwYXNwAAAAAQAAAAEAAAAUYnRydAAAAAAAAApAAAAKQAAAABhzdHRzAAAAAAAAAAEAAAACAABAAAAAABRzdHNzAAAAAAAAAAEAAAABAAAAHHN0c2MAAAAAAAAAAQAAAAEAAAABAAAAAQAAABxzdHN6AAAAAAAAAAAAAAACAAAChgAAAAoAAAAYc3RjbwAAAAAAAAACAAAGBQAACKsAAAKRdHJhawAAAFx0a2hkAAAAAwAAAAAAAAAAAAAAAgAAAAAAAAfQAAAAAAAAAAAAAAABAQAAAAABAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAJGVkdHMAAAAcZWxzdAAAAAAAAAABAAAH0AAABAAAAQAAAAACCW1kaWEAAAAgbWRoZAAAAAAAAAAAAAAAAAAAH0AAAEKAVcQAAAAAAC1oZGxyAAAAAAAAAABzb3VuAAAAAAAAAAAAAAAAU291bmRIYW5kbGVyAAAAAbRtaW5mAAAAEHNtaGQAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAXhzdGJsAAAAfnN0c2QAAAAAAAAAAQAAAG5tcDRhAAAAAAAAAAEAAAAAAAAAAAABABAAAAAAH0AAAAAAADZlc2RzAAAAAAOAgIAlAAIABICAgBdAFQAAAAAAH0AAAAE/BYCAgAUViFblAAaAgIABAgAAABRidHJ0AAAAAAAAH0AAAAE/AAAAIHN0dHMAAAAAAAAAAgAAABAAAAQAAAAAAQAAAoAAAAAoc3RzYwAAAAAAAAACAAAAAQAAAAEAAAABAAAAAgAAAAgAAAABAAAAWHN0c3oAAAAAAAAAAAAAABEAAAAVAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAABxzdGNvAAAAAAAAAAMAAAXwAAAIiwAACLUAAAAac2dwZAEAAAByb2xsAAAAAgAAAAH//wAAABxzYmdwAAAAAHJvbGwAAAABAAAAEQAAAAEAAABidWR0YQAAAFptZXRhAAAAAAAAACFoZGxyAAAAAAAAAABtZGlyYXBwbAAAAAAAAAAAAAAAAC1pbHN0AAAAJal0b28AAAAdZGF0YQAAAAEAAAAATGF2ZjYwLjE2LjEwMAAAAAhmcmVlAAAC7W1kYXTeAgBMYXZjNjAuMzEuMTAyAAIwQA4AAAJwBgX//2zcRem95tlIt5Ys2CDZI+7veDI2NCAtIGNvcmUgMTY0IHIzMTA4IDMxZTE5ZjkgLSBILjI2NC9NUEVHLTQgQVZDIGNvZGVjIC0gQ29weWxlZnQgMjAwMy0yMDIzIC0gaHR0cDovL3d3dy52aWRlb2xhbi5vcmcveDI2NC5odG1sIC0gb3B0aW9uczogY2FiYWM9MCByZWY9MyBkZWJsb2NrPTE6MDowIGFuYWx5c2U9MHgxOjB4MTExIG1lPWhleCBzdWJtZT03IHBzeT0xIHBzeV9yZD0xLjAwOjAuMDAgbWl4ZWRfcmVmPTEgbWVfcmFuZ2U9MTYgY2hyb21hX21lPTEgdHJlbGxpcz0xIDh4OGRjdD0wIGNxbT0wIGRlYWR6b25lPTIxLDExIGZhc3RfcHNraXA9MSBjaHJvbWFfcXBfb2Zmc2V0PS0yIHRocmVhZHM9MSBsb29rYWhlYWRfdGhyZWFkcz0xIHNsaWNlZF90aHJlYWRzPTAgbnI9MCBkZWNpbWF0ZT0xIGludGVybGFjZWQ9MCBibHVyYXlfY29tcGF0PTAgY29uc3RyYWluZWRfaW50cmE9MCBiZnJhbWVzPTAgd2VpZ2h0cD0wIGtleWludD0yNTAga2V5aW50X21pbj0xIHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9NDAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAADmWIhAW///8PRQABT3+AARggBwEYIAcBGCAHARggBwEYIAcBGCAHARggBwEYIAcAAAAGQZo4CvqAARggBwEYIAcBGCAHARggBwEYIAcBGCAHARggBwEYIAc=";
+const ICON={
+  back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+  gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  imp:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>',
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+  up:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>',
+  down:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+  dup:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h9"/></svg>',
+  tick:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  bigtick:'<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  sun:'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>'
+};
+
+/* ---------- storage ---------- */
+function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+const DEFAULT_SETTINGS={unit:"mph",advance:"manual",voice:true,beeps:true,nextUp:true,halfway:true};
+let settings=Object.assign({},DEFAULT_SETTINGS,load("tit.settings",{}));
+let workouts=load("tit3.workouts",null);
+
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const round3=n=>Math.round(n*1000)/1000;
+const num=v=>{if(v===null||v===undefined||v==="")return null;const n=parseFloat(v);return isFinite(n)?n:null};
+const pad=n=>String(n).padStart(2,"0");
+const trimNum=(n,d)=>String(+(+n).toFixed(d));
+function fmtDur(sec){sec=Math.max(0,Math.floor(sec));const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;return h?`${h}:${pad(m)}:${pad(s)}`:`${m}:${pad(s)}`}
+function dispSpeed(mph){return mph==null?"":(settings.unit==="kmh"?mph*KM:mph).toFixed(1)}
+function toMph(v,unit){unit=unit||settings.unit;return v==null?null:round3(unit==="kmh"?v/KM:v)}
+const unitLabel=()=>settings.unit==="kmh"?"km/h":"mph";
+const distLabel=()=>settings.unit==="kmh"?"km":"mi";
+const totDist=m=>m/(settings.unit==="kmh"?1000:MI);
+const mark=m=>totDist(m).toFixed(2);
+function pace(mph){if(!mph)return"";const per=settings.unit==="kmh"?60/(mph*KM):60/mph;let m=Math.floor(per),s=Math.round((per-m)*60);if(s===60){m++;s=0}return`${m}:${pad(s)}`}
+function distVal(m,du){return du==="m"?String(Math.round(m)):trimNum(m/DU[du],3)}
+function fmtDist(m,du){return du==="m"?`${Math.round(m)} m`:`${trimNum(m/DU[du],2)} ${du}`}
+function distWords(m,du){if(du==="m")return`${Math.round(m)} meters`;const v=+trimNum(m/DU[du],2);return`${v} ${du==="mi"?(v===1?"mile":"miles"):(v===1?"kilometer":"kilometers")}`}
+const isDist=s=>s.dist!=null;
+const mid=s=>s.speed==null?null:(s.speedHi!=null?(s.speed+s.speedHi)/2:s.speed);
+function speedText(s){if(s.speed==null)return"";return s.speedHi!=null?`${dispSpeed(s.speed)}–${dispSpeed(s.speedHi)}`:dispSpeed(s.speed)}
+function paceText(s){const pu=s.byPace||(settings.unit==="kmh"?"km":"mi"),f=v=>{const per=60/(v*(pu==="km"?KM:1));let m=Math.floor(per),sec=Math.round((per-m)*60);if(sec===60){m++;sec=0}return m+":"+pad(sec)};
+  return(s.speedHi!=null?f(s.speedHi)+"-"+f(s.speed):f(s.speed))+"/"+pu}
+function stepSecs(s){const v=mid(s);return isDist(s)?(v>0?s.dist/(v*MPS):0):(s.dur||0)}
+function stepMeters(s){const v=mid(s);return isDist(s)?s.dist:(v>0?v*MPS*(s.dur||0):0)}
+function inferType(name){const n=(name||"").toLowerCase();if(/warm/.test(n))return"warmup";if(/cool/.test(n))return"cooldown";if(/rec|jog|walk|rest|easy|float/.test(n))return"recovery";return"work"}
+function flatten(w){const out=[];w.items.forEach(it=>{if(it.repeat){for(let r=1;r<=it.repeat;r++)it.steps.forEach(s=>out.push(Object.assign({},s,{rep:r,reps:it.repeat})))}else out.push(Object.assign({},it,{rep:0,reps:0}))});
+  const tl=out.filter(s=>(isDist(s)?s.dist:s.dur)>0);let c=0;tl.forEach(s=>{c+=stepMeters(s);s.endsAt=c});return tl}
+function totals(w){const tl=flatten(w);let t=0,reps=0;tl.forEach(s=>t+=stepSecs(s));w.items.forEach(it=>{if(it.repeat)reps+=it.repeat});return{time:t,dist:tl.length?tl[tl.length-1].endsAt:0,reps,tl}}
+function stripHTML(tl){const tot=tl.reduce((a,s)=>a+stepSecs(s),0)||1;return`<div class="strip" aria-hidden="true">${tl.map(s=>`<i class="k-${KIND[s.type]}" style="flex:${(stepSecs(s)/tot*1000).toFixed(1)}"></i>`).join("")}</div>`}
+function lenText(s){return isDist(s)?fmtDist(s.dist,s.du||"m"):fmtDur(s.dur)}
+function segLabel(s){return s.reps?`${s.name}, rep ${s.rep} of ${s.reps}`:s.name}
+
+/* ---------- text format ---------- */
+function parseLen(str){const t=str.trim();let m;
+  if((m=t.match(/^(\d+):(\d{1,2}):(\d{1,2})(?=[\s@(\[]|$)/)))return{len:{dur:+m[1]*3600+ +m[2]*60+ +m[3]},used:m[0].length};
+  if((m=t.match(/^(\d+):(\d{1,2})(?=[\s@(\[]|$)/)))return{len:{dur:+m[1]*60+ +m[2]},used:m[0].length};
+  if((m=t.match(/^(\d+(?:\.\d+)?)\s*(miles|mile|mi|km|k|meters|meter|m|mins|min|secs|sec|s)?(?=[\s@(\[]|$)/i))){const v=+m[1],u=(m[2]||"").toLowerCase();let len;
+    if(u==="s"||u.startsWith("sec"))len={dur:Math.round(v)};
+    else if(u.startsWith("min"))len={dur:Math.round(v*60)};
+    else if(u==="m"||u.startsWith("meter"))len={dist:v,du:"m"};
+    else if(u==="km"||u==="k")len={dist:v*1000,du:"km"};
+    else if(u.startsWith("mi"))len={dist:v*MI,du:"mi"};
+    else len=settings.unit==="kmh"?{dist:v*1000,du:"km"}:{dist:v*MI,du:"mi"};
+    return{len,used:m[0].length}}
+  return null}
+function paceToMph(p,pu){const m=p.match(/^(\d+):(\d{2})$/);if(!m)return null;const min=+m[1]+ +m[2]/60;return min>0?60/min/(pu==="km"?KM:1):null}
+function parseStep(str,unit){let s=str.trim();let speed=null,speedHi=null,incline=null,type=null,note="",byPace=null;
+  s=s.replace(/\(([^)]*)\)/,(_,v)=>{note=v.trim();return" "});
+  s=s.replace(/\[(warm-?up|work|recovery|cool-?down)\]/i,(_,v)=>{type=v.toLowerCase().replace("-","");return" "});
+  /* pace like @ 8:00-9:30/mi becomes belt speed; faster pace = higher speed */
+  const takePace=(all,a,b,u)=>{const pu=u?(/^k/i.test(u)?"km":"mi"):(unit==="kmh"?"km":"mi");const v1=paceToMph(a,pu),v2=b?paceToMph(b,pu):null;if(v1==null)return all;
+    if(v2!=null){speed=round3(Math.min(v1,v2));speedHi=round3(Math.max(v1,v2))}else speed=round3(v1);byPace=pu;return" "};
+  s=s.replace(/(?:@\s*)?(\d+:\d{2})(?:\s*[-–]\s*(\d+:\d{2}))?\s*\/\s*(miles|mile|mi|km|k)\b/i,takePace);
+  if(!byPace)s=s.replace(/@\s*(\d+:\d{2})(?:\s*[-–]\s*(\d+:\d{2}))?(?!\d)/,(all,a,b)=>takePace(all,a,b,null));
+  if(!byPace)s=s.replace(/@\s*(\d+(?:\.\d+)?)(?:\s*[-–]\s*(\d+(?:\.\d+)?))?/,(_,a,b)=>{speed=toMph(+a,unit);if(b!=null)speedHi=toMph(+b,unit);return" "});
+  if(speed!=null&&speedHi!=null&&speedHi<speed){const t=speed;speed=speedHi;speedHi=t}
+  s=s.replace(/(-?\d+(?:\.\d+)?)\s*%/,(_,v)=>{incline=+v;return" "});
+  /* length can lead the line (1000m Rep) or follow the name (Warmup 2.0 mi) */
+  s=s.trim();let len=null;const pl=parseLen(s);
+  if(pl){len=pl.len;s=s.slice(pl.used)}
+  else{const m=s.match(/(^|\s)(\d+:\d{1,2}(?::\d{1,2})?|\d+(?:\.\d+)?\s*(?:miles|mile|mi|km|k|meters|meter|m|mins|min|secs|sec|s))(?=\s|$)/i);const p=m&&parseLen(m[2]);
+    if(p){len=p.len;s=s.slice(0,m.index)+" "+s.slice(m.index+m[0].length)}}
+  if(!len)throw new Error(`Couldn't find a length in “${str.trim()}”. Give each segment a distance like 1000m, 2.0 mi or 1.5km, or a time like 3:00.`);
+  const name=s.replace(/\s+/g," ").trim()||"Interval";
+  return{name,type:type||inferType(name),dur:len.dur!=null?len.dur:null,dist:len.dist!=null?round3(len.dist):null,du:len.du||null,speed,speedHi,incline,note,byPace}}
+function parseText(text,unit){const blocks=[];let cur=null;const mk=n=>{cur={id:uid(),name:n,notes:"",items:[]};blocks.push(cur)};
+  String(text).replace(/\r/g,"").split("\n").forEach((raw,ix)=>{const line=raw.trim();if(!line||line.startsWith("//"))return;
+    if(line.startsWith("#"))return mk(line.replace(/^#+/,"").trim()||"Untitled workout");
+    if(!cur)mk("Imported workout");
+    if(line.startsWith(">")){cur.notes+=(cur.notes?"\n":"")+line.slice(1).trim();return}
+    try{const rm=line.match(/^(\d+)\s*[x×]\s+(.+)$/i);
+      if(rm)cur.items.push({repeat:Math.max(1,parseInt(rm[1])),steps:rm[2].split(" / ").map(p=>parseStep(p,unit))});
+      else cur.items.push(parseStep(line,unit))}
+    catch(e){throw new Error(`Line ${ix+1}: ${e.message}`)}});
+  return blocks}
+function lenToken(s){if(!isDist(s))return fmtDur(s.dur);const du=s.du||"m";return du==="m"?`${Math.round(s.dist)}m`:`${trimNum(s.dist/DU[du],3)}${du}`}
+function stepText(s){let t=lenToken(s)+" "+s.name;if(s.speed!=null)t+=" @"+(s.byPace?paceText(s):speedText(s).replace("–","-"));if(s.incline!=null)t+=" "+s.incline+"%";if(inferType(s.name)!==s.type)t+=" ["+s.type+"]";if(s.note)t+=" ("+s.note.replace(/[()]/g,"")+")";return t}
+function itemsText(items){return items.map(it=>it.repeat?`${it.repeat}x `+it.steps.map(stepText).join(" / "):stepText(it)).join("\n")}
+function workoutText(w){return`# ${w.name}\n`+(w.notes?w.notes.split("\n").map(l=>"> "+l).join("\n")+"\n":"")+itemsText(w.items)}
+function normStep(s){s=s||{};const name=String(s.name||"Interval");const st={name,type:TYPES[s.type]?s.type:inferType(name),dur:null,dist:null,du:null,speed:num(s.speed),speedHi:num(s.speedHi),incline:num(s.incline),note:String(s.note||""),byPace:s.byPace==="mi"||s.byPace==="km"?s.byPace:null};
+  const dv=s.dist!=null?s.dist:s.distance;
+  if(typeof dv==="number"){st.dist=dv;st.du=DU[s.du]?s.du:"m"}
+  else if(typeof dv==="string"&&dv.trim()){const p=parseLen(dv);if(p&&p.len.dist!=null){st.dist=p.len.dist;st.du=p.len.du}}
+  if(st.dist==null){const tv=s.dur!=null?s.dur:s.duration;if(typeof tv==="number")st.dur=Math.max(0,Math.round(tv));else{const p=parseLen(String(tv||"0"));st.dur=p&&p.len.dur!=null?p.len.dur:0}}
+  return st}
+function normWorkout(o){if(!o||typeof o!=="object")throw new Error("That JSON isn't a workout.");
+  const src=o.items||o.steps||o.intervals||o.segments;if(!Array.isArray(src))throw new Error(`“${o.name||"Workout"}” has no items list.`);
+  return{id:uid(),name:String(o.name||"Imported workout"),notes:String(o.notes||""),items:src.map(it=>it&&it.repeat?{repeat:Math.max(1,parseInt(it.repeat)||1),steps:(it.steps||[]).map(normStep)}:normStep(it))}}
+function parseAny(text){const t=text.trim();if(!t)throw new Error("Paste a workout or choose a file first.");
+  if(t[0]==="{"||t[0]==="["){let j;try{j=JSON.parse(t)}catch(e){throw new Error("That looks like JSON but it doesn't parse: "+e.message)}
+    const arr=Array.isArray(j)?j:Array.isArray(j.workouts)?j.workouts:[j];return arr.map(normWorkout)}
+  return parseText(t,settings.unit)}
+function exportJSON(list){return JSON.stringify({format:"treadmill-intervals",version:3,speedUnit:"mph",distanceUnit:"meters",workouts:list.map(w=>({name:w.name,notes:w.notes,items:w.items}))},null,2)}
+
+const SEED=`# MM27 Intervals: 6×1000
+> Miami Marathon plan, week 2. Reps target 6:25–6:35/mi, that's belt 9.1–9.4 mph. Each 1000 m rep should take about 4:00–4:06; the segment timer cross-checks it. Recoveries are an easy jog, never a walk.
+2mi Warm-up @7.0-7.5 (Easy and conversational. Let the legs come to you; the work starts at 2.00 mi.)
+1000m Rep 1 of 6 [work] @9.1 (Target pace 6:25–6:35/mi. This rep should take about 4:00–4:06; glance at the segment timer as you finish.)
+400m Jog recovery @6.5-7.0 (Easy jog, never a walk. Shake the arms out, breathe down.)
+1000m Rep 2 of 6 [work] @9.1 (Target pace 6:25–6:35/mi, about 4:00–4:06. Settle into the rhythm.)
+400m Jog recovery @6.5-7.0 (Easy jog. Halfway through the recoveries after the next rep; stay patient.)
+1000m Rep 3 of 6 [work] @9.2 (Belt up a notch to 9.2 mph. Target pace 6:25–6:35/mi, about 4:00–4:06 for the rep.)
+400m Jog recovery @6.5-7.0 (Easy jog. Three reps banked after this breather.)
+1000m Rep 4 of 6 [work] @9.2 (Target pace 6:25–6:35/mi, about 4:00–4:06. Form first: tall, quick feet.)
+400m Jog recovery @6.5-7.0 (Easy jog. Two reps left after this one.)
+1000m Rep 5 of 6 [work] @9.3 (Belt up to 9.3 mph. Target pace 6:25–6:35/mi, about 4:00–4:06. This is where it gets honest.)
+400m Jog recovery @6.5-7.0 (Last breather. One rep to go; make it count.)
+1000m Rep 6 of 6 [work] @9.3-9.4 (Final rep, belt 9.3–9.4 mph. Target pace 6:25–6:35/mi, about 4:00–4:06. Empty the tank, hold form.)
+2.03mi Cool-down @7.0-7.5 (Easy to the finish at 9.00 mi. Let the heart rate drift down; the workout's already in the bank.)
+
+# Quick cue test
+> Short segments so you can hear every cue before a real session.
+40m Warm-up @5.0 1%
+2x 40m Run @8.0 1% / 30m Jog @5.5 1%
+40m Cool-down @5.0 0%
+
+# Mile repeats
+1.5mi Warm-up @6.5-7.0 1%
+4x 1mi Run @8.8 1% / 0.25mi Jog @6.0-6.5 1%
+1mi Cool-down @6.0-6.5 1%
+
+# Yasso 800s
+1.5mi Warm-up @6.5-7.0 1%
+8x 800m Run @9.2 1% / 400m Jog @5.5-6.0 1%
+1mi Cool-down @6.0-6.5 1%
+
+# Hill repeats
+1.5mi Warm-up @6.5-7.0 1%
+6x 400m Hill @7.5 6% / 400m Recovery @6.0 1%
+1mi Cool-down @6.0 0%`;
+const persist=()=>save("tit3.workouts",workouts);
+if(!Array.isArray(workouts)){
+  /* keep anything built in the earlier version, minus its stock samples */
+  const prev=load("tit.workouts",[]),stock=["Quick cue test","1K repeats","Yasso 800s","Hill repeats","Tempo blocks","Mile repeats","Tempo run"];
+  const keep=Array.isArray(prev)?prev.filter(w=>w&&w.items&&!stock.includes(w.name)).map(w=>{try{const n=normWorkout(w);n.id=w.id||n.id;return n}catch(e){return null}}).filter(Boolean):[];
+  workouts=parseText(SEED,"mph").concat(keep);persist()}
+
+/* ---------- audio ---------- */
+let ac=null;
+function initAudio(){
+  try{if(navigator.audioSession)navigator.audioSession.type="playback"}catch(e){}
+  try{if(!ac){const C=window.AudioContext||window.webkitAudioContext;if(C)ac=new C()}if(ac&&ac.state!=="running")ac.resume()}catch(e){}
+  try{if("speechSynthesis" in window){const u=new SpeechSynthesisUtterance(" ");u.volume=0;speechSynthesis.speak(u)}}catch(e){}}
+function beep(freq,len,vol){if(!settings.beeps||!ac)return;try{if(ac.state!=="running")ac.resume();const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain();o.type="triangle";o.frequency.value=freq||880;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol||0.8,t+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t+(len||0.12));o.connect(g);g.connect(ac.destination);o.start(t);o.stop(t+(len||0.12)+0.03)}catch(e){}}
+function chime(){beep(1175,.14);setTimeout(()=>beep(1568,.3),170)}
+function say(text){if(!settings.voice||!("speechSynthesis" in window))return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.rate=1.05;u.volume=1;speechSynthesis.speak(u)}catch(e){}}
+function durWords(sec){const m=Math.floor(sec/60),s=sec%60;const p=[];if(m)p.push(m+(m===1?" minute":" minutes"));if(s)p.push(s+(s===1?" second":" seconds"));return p.join(" ")}
+function speedWords(s){return s.speed==null?"":(s.speedHi!=null?`${dispSpeed(s.speed)} to ${dispSpeed(s.speedHi)}`:dispSpeed(s.speed))}
+const markWords=m=>`${mark(m)} ${settings.unit==="kmh"?"kilometers":"miles"}`;
+
+/* ---------- keep screen awake ---------- */
+let wakeLock=null,wakeMode="off",vid=null;
+async function acquireWake(){
+  if("wakeLock" in navigator){try{wakeLock=await navigator.wakeLock.request("screen");wakeMode="native";
+      wakeLock.addEventListener("release",()=>{if(wakeMode==="native"&&P&&!P.done){wakeMode="released";updateWake()}});updateWake();return}catch(e){}}
+  try{if(!vid){vid=document.createElement("video");vid.setAttribute("playsinline","");vid.setAttribute("muted","");vid.muted=true;vid.loop=true;vid.src=NOSLEEP_SRC;vid.setAttribute("aria-hidden","true");vid.style.cssText="position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:.01;pointer-events:none";document.body.appendChild(vid)}
+    await vid.play();wakeMode="video"}catch(e){wakeMode="none"}
+  updateWake()}
+function releaseWake(){wakeMode="off";if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null}if(vid)try{vid.pause()}catch(e){}}
+function updateWake(){const el=$("#pWake");if(!el)return;
+  if(wakeMode==="native"||wakeMode==="video"){el.className="wake";el.innerHTML=ICON.sun+"<span>Screen stays on</span>"}
+  else if(wakeMode==="released"){el.className="wake bad";el.textContent="Screen lock came back. Tap Pause twice."}
+  else{el.className="wake bad";el.textContent="Screen may sleep. Set Auto-Lock to Never."}}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&P&&!P.done&&!P.paused){if(!(wakeMode==="native"&&wakeLock&&!wakeLock.released))acquireWake();tick()}});
+
+/* ---------- state ---------- */
+let view="library",cur=null,ED=null,edTab="steps",edErr="",sheet=null,P=null;
+function render(){let h="";
+  if(view==="library")h=libraryHTML();else if(view==="detail")h=detailHTML();else if(view==="editor")h=editorHTML();else if(view==="run")h=runHTML();else if(view==="done")h=doneHTML();
+  $("#app").innerHTML=h+(sheet?sheetHTML():"");if(view==="run"){updateWake();paint()}}
+function go(v,id){view=v;if(id!==undefined)cur=id;sheet=null;render();window.scrollTo(0,0)}
+const getW=id=>workouts.find(w=>w.id===id);
+
+/* ---------- library ---------- */
+function libraryHTML(){
+  const rows=workouts.map(w=>{const t=totals(w);return`<li><button data-act="open" data-id="${w.id}">
+    <span class="nm">${esc(w.name)}</span>${stripHTML(t.tl)}
+    <span class="meta"><span>${mark(t.dist)} ${distLabel()}</span><span>${t.tl.length} segments</span><span>about ${fmtDur(t.time)}</span></span></button></li>`}).join("");
+  return`<div class="wrap"><div class="bar"><h1>Treadmill Intervals</h1>
+    <button class="ibtn" data-act="import">${ICON.imp}<span>Import</span></button>
+    <button class="ibtn" data-act="settings" aria-label="Settings">${ICON.gear}</button></div>
+    ${workouts.length?`<ul class="lib">${rows}</ul>`:`<div class="empty">No workouts yet. Build one or import a file to get started.</div>`}
+    </div><div class="dock"><div class="inner"><button class="btn primary" data-act="new">${ICON.plus}New workout</button></div></div>`}
+
+/* ---------- segment list (shared by detail and run views) ---------- */
+function segListHTML(tl,idx){return`<ol class="segs">${tl.map((s,i)=>{const st=idx==null?"":i<idx?"is-done":i===idx?"is-current":"";
+  const det=[s.speed!=null?`Belt ${speedText(s)} ${unitLabel()}${s.byPace?` (${paceText(s).replace("-","–")})`:""}`:"",s.incline!=null?`${s.incline}%`:"",lenText(s)].filter(Boolean).join(", ");
+  return`<li class="k-${KIND[s.type]} ${st}" id="seg-${i}"><span class="dot" aria-hidden="true"></span><span class="main"><span class="name">${esc(segLabel(s))}</span><br><span class="detail">${esc(det)}</span></span>
+   <span class="end">${isDist(s)?`<span class="v">${mark(s.endsAt)}</span><br><span class="lab">belt ${distLabel()}</span>`:`<span class="v">${fmtDur(s.dur)}</span><br><span class="lab">timed</span>`}</span><span class="tick" aria-hidden="true">${ICON.tick}</span></li>`}).join("")}</ol>`}
+
+/* ---------- detail (idle) ---------- */
+function detailHTML(){const w=getW(cur);if(!w){view="library";return libraryHTML()}const t=totals(w);
+  return`<div class="wrap"><div class="bar"><button class="ibtn ghost" data-act="home" aria-label="Back to workouts">${ICON.back}</button><h2>${esc(w.name)}</h2><button class="ibtn" data-act="edit">Edit</button></div>
+   <div class="stats"><div class="stat"><div class="v">${mark(t.dist)} ${distLabel()}</div><div class="lab">Total</div></div><div class="stat"><div class="v">${t.tl.length}</div><div class="lab">Segments</div></div><div class="stat"><div class="v">${fmtDur(t.time)}</div><div class="lab">About</div></div></div>
+   ${w.notes?`<div class="note">${esc(w.notes)}</div>`:""}
+   <button class="btn go" style="width:100%" data-act="start">START WORKOUT</button>
+   <h2 class="lab list-title">All segments, by belt distance</h2>${segListHTML(t.tl,null)}
+   <div class="actions"><button class="btn small" data-act="dup">${ICON.dup}Duplicate</button><button class="btn small" data-act="share">Share or copy</button><button class="btn small" data-act="del">${ICON.trash}Delete</button></div></div>`}
+
+/* ---------- editor ---------- */
+function blankStep(type){const big=settings.unit==="kmh"?"km":"mi";
+  const d={warmup:["Warm-up",settings.unit==="kmh"?3000:2*MI,big,7.0,7.5],work:["Rep",1000,"m",9.1,null],recovery:["Jog recovery",400,"m",6.5,7.0],cooldown:["Cool-down",settings.unit==="kmh"?3000:2*MI,big,7.0,7.5]}[type||"work"];
+  return{name:d[0],type:type||"work",dur:null,dist:round3(d[1]),du:d[2],speed:d[3],speedHi:d[4],incline:null,note:""}}
+function estepHTML(s,i,j){const a=`data-i="${i}" data-j="${j}"`,mode=isDist(s)?(s.du||"m"):"time";
+  const sel=`<label class="mini"><span>Length in</span><select ${a} data-f="du">${[["m","meters"],["mi","miles"],["km","km"],["time","time"]].map(([k,v])=>`<option value="${k}"${k===mode?" selected":""}>${v}</option>`).join("")}</select></label>`;
+  const len=mode==="time"?`<label class="mini"><span>Min</span><input ${a} data-f="min" inputmode="numeric" value="${Math.floor(s.dur/60)}"></label><label class="mini"><span>Sec</span><input ${a} data-f="sec" inputmode="numeric" value="${s.dur%60}"></label>`
+    :`<label class="mini" style="grid-column:span 2"><span>Distance</span><input ${a} data-f="dist" inputmode="decimal" value="${distVal(s.dist,mode)}"></label>`;
+  return`<div class="estep k-${KIND[s.type]}">
+   <div class="erow"><input type="text" ${a} data-f="name" value="${esc(s.name)}" aria-label="Segment name" placeholder="Segment name">
+    <select ${a} data-f="type" aria-label="Segment type">${Object.entries(TYPES).map(([k,v])=>`<option value="${k}"${k===s.type?" selected":""}>${v}</option>`).join("")}</select></div>
+   <div class="egrid">${sel}${len}</div>
+   <div class="egrid">
+    <label class="mini"><span>Belt ${unitLabel()}</span><input ${a} data-f="speed" inputmode="decimal" value="${s.speed!=null?dispSpeed(s.speed):""}" placeholder="–"></label>
+    <label class="mini"><span>Up to (optional)</span><input ${a} data-f="speedHi" inputmode="decimal" value="${s.speedHi!=null?dispSpeed(s.speedHi):""}" placeholder="–"></label>
+    <label class="mini"><span>Incline %</span><input ${a} data-f="incline" inputmode="decimal" value="${s.incline!=null?s.incline:""}" placeholder="–"></label></div>
+   <textarea ${a} data-f="note" rows="1" placeholder="Coaching note shown and read out on this segment (optional)" aria-label="Coaching note">${esc(s.note)}</textarea>
+   <div class="etools"><button ${a} data-act="ed-up" aria-label="Move up">${ICON.up}</button><button ${a} data-act="ed-down" aria-label="Move down">${ICON.down}</button><button ${a} data-act="ed-dupstep" aria-label="Duplicate segment">${ICON.dup}</button><button ${a} data-act="ed-del" aria-label="Delete segment">${ICON.trash}</button></div></div>`}
+function edSummary(){const t=totals(ED);return`${mark(t.dist)} ${distLabel()} total, ${t.tl.length} segments, about ${fmtDur(t.time)}`}
+function editorHTML(){
+  const items=ED.items.map((it,i)=>it.repeat?`<div class="erep">
+     <div class="rhead"><span class="lab">Repeat</span><input data-i="${i}" data-j="-1" data-f="times" inputmode="numeric" value="${it.repeat}" aria-label="Repeat count"><span class="lab" style="flex:1">times</span>
+      <div class="etools"><button data-i="${i}" data-j="-1" data-act="ed-up" aria-label="Move block up">${ICON.up}</button><button data-i="${i}" data-j="-1" data-act="ed-down" aria-label="Move block down">${ICON.down}</button><button data-i="${i}" data-j="-1" data-act="ed-del" aria-label="Delete block">${ICON.trash}</button></div></div>
+     ${it.steps.map((s,j)=>estepHTML(s,i,j)).join("")}
+     <button class="btn small" data-act="ed-addin" data-i="${i}">${ICON.plus}Add segment to block</button></div>`:estepHTML(it,i,-1)).join("");
+  return`<div class="wrap"><div class="bar"><button class="ibtn ghost" data-act="ed-cancel">Cancel</button><h2 style="text-align:center">${ED._new?"New workout":"Edit workout"}</h2><button class="ibtn solid" data-act="ed-save">Save</button></div>
+   <div class="field"><label for="edName">Name</label><input id="edName" type="text" value="${esc(ED.name)}" placeholder="e.g. 6×1000"></div>
+   <div class="field"><label for="edNotes">Notes shown before you start</label><textarea id="edNotes" rows="2" placeholder="Paces, goals, reminders">${esc(ED.notes)}</textarea></div>
+   <div class="tabs" role="group" aria-label="Editor mode"><button data-act="tab-steps" aria-pressed="${edTab==="steps"}">Segments</button><button data-act="tab-text" aria-pressed="${edTab==="text"}">Text</button></div>
+   ${edErr?`<div class="err" role="alert">${esc(edErr)}</div>`:""}
+   ${edTab==="steps"?`<div class="meta" id="edSum" style="margin-bottom:10px">${edSummary()}</div><div class="eitems">${items||'<div class="empty">Add a segment or a repeat block.</div>'}</div>
+     <div class="actions"><button class="btn small" data-act="ed-add">${ICON.plus}Segment</button><button class="btn small" data-act="ed-addrep">${ICON.plus}Repeat block</button></div>`
+   :`<textarea class="code" id="edText" spellcheck="false" autocapitalize="off" autocorrect="off">${esc(itemsText(ED.items))}</textarea>${formatHelp()}`}
+  </div>`}
+function formatHelp(){return`<div class="help"><b>Text format.</b> One segment per line: length, name, <code>@belt speed</code>, optional <code>incline%</code>, optional <code>(coaching note)</code>. Lengths are distances like <code>1000m</code>, <code>2mi</code>, <code>1.5km</code> or <code>1k</code>; a bare number means ${settings.unit==="kmh"?"kilometers":"miles"}. A speed range works too: <code>@6.5-7.0</code>. Or give a pace, like <code>@ 8:00-9:30/mi</code>, and it's turned into belt speed for you. The name can come first: <code>Warmup 2.0 mi @ 8:00-9:30/mi</code>. Timed segments still work: <code>3:00</code> or <code>90s</code>. Repeat blocks start with <code>6x</code> and separate segments with <code> / </code>. Add <code>[work]</code>, <code>[recovery]</code>, <code>[warmup]</code> or <code>[cooldown]</code> to set the type. Speeds use your ${unitLabel()} setting.
+<pre>2mi Warm-up @7.0-7.5
+6x 1000m Rep @9.1 / 400m Jog recovery @6.5-7.0
+2mi Cool-down @7.0-7.5 (Easy to the finish)</pre></div>`}
+function edSyncHeader(){const n=$("#edName"),no=$("#edNotes");if(n)ED.name=n.value;if(no)ED.notes=no.value}
+function edFromText(){const ta=$("#edText");if(!ta)return true;try{const r=parseText("# x\n"+ta.value,settings.unit);ED.items=r[0]?r[0].items:[];edErr="";return true}catch(e){edErr=e.message;return false}}
+const edGet=(i,j)=>j>=0?ED.items[i].steps[j]:ED.items[i];
+const edList=(i,j)=>j>=0?ED.items[i].steps:ED.items;
+function edValidate(){if(settings.advance!=="auto")return"";let bad=null;ED.items.forEach(it=>(it.repeat?it.steps:[it]).forEach(s=>{if(!bad&&isDist(s)&&!(s.speed>0))bad=s}));
+  return bad?`“${bad.name}” needs a belt speed for automatic advance. Add one, or switch Settings back to tapping at the belt mark.`:""}
+
+/* ---------- run ----------
+   manual: the treadmill's distance readout is the truth; tap Next at each belt mark.
+   auto:   distance is worked out from the speed shown, adjustable with − and +. */
+const curStep=()=>P.tl[P.idx];
+const auto=()=>P.mode==="auto";
+function estRem(){const s=curStep();if(!isDist(s))return Math.max(0,s.dur-P.el);if(auto()){const v=(P.spd||0)*MPS;return v>0?Math.max(0,s.dist-P.cov)/v:Infinity}return Math.max(0,stepSecs(s)-P.el)}
+function enterStep(i){P.idx=i;P.el=0;P.cov=0;P.fired={};const s=P.tl[i];P.spd=s?mid(s):null}
+function startWorkout(w){initAudio();const tl=flatten(w);if(!tl.length)return toast("Add at least one segment first.");
+  if(settings.advance==="auto"){const bad=tl.find(s=>isDist(s)&&!(s.speed>0));if(bad)return toast(`“${bad.name}” has no belt speed, so it can't auto-advance. Add one or switch to tapping at the belt mark.`)}
+  P={w,tl,mode:settings.advance,idx:0,el:0,cov:0,spd:null,fired:{},lastT:Date.now(),paused:false,done:false,session:0,lastIdx:-1};enterStep(0);
+  acquireWake();view="run";render();window.scrollTo(0,0);announce(false);P.timer=setInterval(tick,200)}
+function announce(withBeep){const s=curStep();if(withBeep)beep(1320,0.35);
+  let t=segLabel(s)+".";if(s.speed!=null)t+=` Set belt to ${speedWords(s)}.`;if(s.incline!=null)t+=` Incline ${s.incline}.`;
+  t+=isDist(s)?` Until belt reads ${markWords(s.endsAt)}.`:` For ${durWords(s.dur)}.`;if(s.note)t+=" "+s.note;
+  setTimeout(()=>say(t),withBeep?350:0)}
+/* advance clock; only timed segments, or distance segments in auto mode, end on their own */
+function integrate(now){let dt=(now-P.lastT)/1000;P.lastT=now;let moved=false,lag=0;
+  while(dt>0){const s=curStep(),selfEnding=!isDist(s)||auto(),r=selfEnding?estRem():Infinity,use=Math.min(dt,r),v=(P.spd||0)*MPS;
+    P.el+=use;P.cov+=v*use;P.session+=use;dt-=use;
+    if(r<=use+1e-9){lag=dt;if(P.idx+1>=P.tl.length){P.idx++;return"end"}enterStep(P.idx+1);moved=true}else break}
+  return moved?(lag<2?"beep":"quiet"):""}
+function tick(){if(!P||P.paused||P.done)return;const res=integrate(Date.now());
+  if(res==="end")return finish(true);if(res){announce(res==="beep");paintAll();return}
+  const s=curStep(),est=stepSecs(s),rem=estRem(),remS=Math.ceil(rem),manualDist=isDist(s)&&!auto();
+  if(manualDist){
+    if(settings.nextUp&&est>=25&&remS===10&&!P.fired.n){P.fired.n=1;say(`Coming up on ${markWords(s.endsAt)}.`)}
+    if(est>=6&&P.el>=est&&!P.fired.m){P.fired.m=1;chime();setTimeout(()=>say(`Check the belt. Tap next at ${markWords(s.endsAt)}.`),500)}
+  }else{
+    if(est>=6&&remS>=1&&remS<=3&&!P.fired["b"+remS]){P.fired["b"+remS]=1;if(rem>remS-0.6)beep(880,0.13)}
+    if(settings.nextUp&&est>=25&&remS===10&&!P.fired.n){P.fired.n=1;const nx=P.tl[P.idx+1];say(nx?`Next, ${segLabel(nx)}${nx.speed!=null?`, belt ${speedWords(nx)}`:""}, in 10 seconds.`:"Last 10 seconds.")}
+  }
+  if(settings.halfway&&est>=120&&P.el>=est/2&&rem>12&&!P.fired.h){P.fired.h=1;say("Halfway.")}
+  paint()}
+function paint(){if(!P||view!=="run"||P.done)return;if(P.idx!==P.lastIdx)return paintAll();
+  const s=curStep(),est=stepSecs(s);
+  const st=$("#sessionTimer");if(!st)return;st.textContent=fmtDur(P.session);$("#segTimer").textContent=fmtDur(P.el);
+  let frac,left="",right="";
+  if(!isDist(s)){frac=P.el/s.dur;left=`${fmtDur(Math.ceil(s.dur-P.el))} left`;right=`of ${fmtDur(s.dur)}`}
+  else if(auto()){frac=P.cov/s.dist;const r=estRem();left=`belt about ${mark(Math.min(s.endsAt,s.endsAt-s.dist+P.cov))} ${distLabel()}`;right=isFinite(r)?`about ${fmtDur(Math.ceil(r))} to go`:"set a speed"}
+  else{frac=est?P.el/est:0;left=est?`expected about ${fmtDur(est)}`:"";right=est&&P.el>est?`+${fmtDur(P.el-est)} over`:""}
+  const pb=$("#segBar");pb.style.width=Math.min(100,frac*100).toFixed(1)+"%";pb.parentNode.classList.toggle("over",frac>1&&!auto()&&isDist(s));
+  $("#estL").textContent=left;$("#estR").textContent=right;
+  if(!isDist(s)){const v=$("#heroEnd");if(v)v.innerHTML=`${fmtDur(Math.ceil(s.dur-P.el))}`}}
+function paintAll(){if(view!=="run")return;const y=window.scrollY;render();window.scrollTo(0,y)}
+function runHTML(){const s=curStep(),nx=P.tl[P.idx+1];P.lastIdx=P.idx;const k=KIND[s.type];
+  const spdCell=s.speed!=null?`<div class="hero-cell"><div class="lab">Set belt to</div>${auto()?`<div class="spd-row"><button data-act="spd-down" aria-label="Lower speed">−</button><div class="v" id="pSpd">${dispSpeed(P.spd)}</div><button data-act="spd-up" aria-label="Raise speed">+</button></div><div class="sub">${unitLabel()}, ${pace(P.spd)}/${distLabel()}${s.speedHi!=null?`, plan ${speedText(s)}`:""}</div>`:`<div class="v">${speedText(s)} <small>${unitLabel()}</small></div><div class="sub">${s.speedHi!=null?`${pace(s.speedHi)}–${pace(s.speed)}`:pace(s.speed)} /${distLabel()}${s.incline!=null?`, ${s.incline}% incline`:""}</div>`}</div>`
+    :`<div class="hero-cell"><div class="lab">Incline</div><div class="v">${s.incline!=null?`${s.incline} <small>%</small>`:"–"}</div></div>`;
+  const endCell=isDist(s)?`<div class="hero-cell"><div class="lab">Until belt reads</div><div class="v">${mark(s.endsAt)} <small>${distLabel()}</small></div><div class="sub">${lenText(s)} segment</div></div>`
+    :`<div class="hero-cell"><div class="lab">Timed, left</div><div class="v" id="heroEnd">${fmtDur(Math.ceil(s.dur-P.el))}</div><div class="sub">belt about ${mark(s.endsAt)} ${distLabel()} after</div></div>`;
+  const hint=isDist(s)&&!auto()?`when the belt reads ${mark(s.endsAt)} ${distLabel()}`:isDist(s)?`moves on by itself at ${mark(s.endsAt)} ${distLabel()}, or tap`:`moves on by itself at 0:00, or tap`;
+  const nxText=nx?`${esc(segLabel(nx))} <span>${nx.speed!=null?`belt ${speedText(nx)} ${unitLabel()}, `:""}${isDist(nx)?`until ${mark(nx.endsAt)} ${distLabel()}`:`for ${fmtDur(nx.dur)}`}</span>`:`Finish <span>you're done at ${mark(s.endsAt)} ${distLabel()}</span>`;
+  return`<div class="wrap" style="padding-bottom:40px">
+   <div class="bar"><button class="ibtn ghost" data-act="p-end">End</button><h2 style="font-size:1rem;text-align:center;color:var(--muted)">${esc(P.w.name)}</h2><span id="pWake" class="wake" style="font-size:.8rem"></span></div>
+   ${P.paused?`<p class="paused-banner">PAUSED</p>`:""}
+   <div class="timers"><div class="timer-box"><div class="lab">Session</div><div class="v" id="sessionTimer">${fmtDur(P.session)}</div></div><div class="timer-box"><div class="lab">This segment</div><div class="v" id="segTimer">${fmtDur(P.el)}</div></div><button class="btn-pause" data-act="p-toggle">${P.paused?"Resume":"Pause"}</button></div>
+   <div class="hero k-${k}"><div class="kind">${TYPES[s.type]}${isDist(s)?`, ${lenText(s)}`:""}</div><div class="seg-name">${esc(s.name)}</div>
+    <div class="seg-count">Segment ${P.idx+1} of ${P.tl.length}${s.reps?`, rep ${s.rep} of ${s.reps}`:""}</div>
+    <div class="hero-grid">${spdCell}${endCell}</div>
+    ${s.note?`<p class="check">${esc(s.note)}</p>`:""}
+    <div class="seg-progress"><div id="segBar"></div></div><div class="est"><span id="estL"></span><span id="estR"></span></div></div>
+   <div class="upnext"><span class="lab">Up next</span><span class="v">${nxText}</span></div>
+   <div class="controls"><button class="btn-back" data-act="p-back" ${P.idx===0?"disabled":""}>← Back</button>
+    <button class="btn-next" data-act="p-next">${nx?"NEXT SEGMENT":"FINISH"}<small>${hint}</small></button></div>
+   <h2 class="lab list-title">All segments, by belt distance</h2>${segListHTML(P.tl,P.idx)}</div>`}
+function finish(completed){if(!P||P.done)return;clearInterval(P.timer);
+  const doneIdx=completed?P.tl.length:P.idx;const belt=doneIdx>0?P.tl[doneIdx-1].endsAt:0;
+  P.result={completed,time:P.session,belt,segs:doneIdx};P.done=true;releaseWake();
+  if(completed){beep(988,.15);setTimeout(()=>beep(1319,.15),180);setTimeout(()=>beep(1760,.4),360);setTimeout(()=>say(`Workout complete. ${markWords(belt)} on the belt. Nice work.`),500)}else{try{speechSynthesis.cancel()}catch(e){}}
+  view="done";render();window.scrollTo(0,0)}
+function doneHTML(){const r=P.result,reps=P.tl.filter(s=>s.type==="work").length;
+  return`<div class="wrap"><div class="done"><div class="check-mark" aria-hidden="true">${ICON.bigtick}</div><h2>${r.completed?"WORKOUT COMPLETE":"WORKOUT ENDED"}</h2>
+   <p>${mark(r.belt)} ${distLabel()} on the belt${r.completed&&reps?`, all ${reps} work segments in the bank`:`, ${r.segs} of ${P.tl.length} segments`}.</p>
+   <div class="total-time">Total time ${fmtDur(r.time)}</div>
+   <div class="actions" style="justify-content:center"><button class="btn small" data-act="again">Run it again</button><button class="btn small primary" data-act="home">Done</button></div></div>
+   <h2 class="lab list-title">${esc(P.w.name)}</h2>${segListHTML(P.tl,r.completed?P.tl.length:r.segs)}</div>`}
+
+/* ---------- sheets ---------- */
+function sheetHTML(){let b="";
+  if(sheet.kind==="settings"){const tg=(k,t,sub)=>`<label class="toggle"><span>${t}${sub?`<small>${sub}</small>`:""}</span><input type="checkbox" class="sw" data-set="${k}"${settings[k]?" checked":""}></label>`;
+    b=`<div style="display:flex;align-items:center"><h3 style="flex:1">Settings</h3><button class="ibtn solid" data-act="close-sheet">Done</button></div>
+     <div class="toggle col"><span>Moving to the next segment<small>${settings.advance==="manual"?"The belt readout is the truth: tap Next when it hits each mark. The app chimes when you should be close.":"Distance is worked out from the speed on screen. Match it to the belt with − and +; belts and estimates drift, so expect small differences."}</small></span>
+      <div class="seg" role="group" aria-label="Advance mode"><button data-act="adv-manual" aria-pressed="${settings.advance==="manual"}">Tap at belt mark</button><button data-act="adv-auto" aria-pressed="${settings.advance==="auto"}">Automatic from speed</button></div></div>
+     <div class="toggle"><span>Units</span><div class="seg" role="group" aria-label="Units"><button data-act="unit-mph" aria-pressed="${settings.unit==="mph"}">mph, mi</button><button data-act="unit-kmh" aria-pressed="${settings.unit==="kmh"}">km/h, km</button></div></div>
+     ${tg("voice","Voice announcements","Reads each segment: belt speed, the mark to hit, and your note")}${tg("beeps","Beeps and chimes","Chime when you should be near the mark; 3-2-1 on timed segments")}${tg("nextUp","Heads-up","About 10 seconds before the mark or the next segment")}${tg("halfway","Halfway cue","On segments of 2 minutes or longer")}
+     <div class="actions"><button class="btn small" data-act="test-sound">Test sound</button><button class="btn small" data-act="export-all">Export all workouts</button><button class="btn small" data-act="reset">Restore sample workouts</button></div>
+     <div class="help">On iPhone, voice cues follow the ringer volume and the side switch can silence them. If you hear nothing, flip the switch off silent, turn the volume up, then tap Test sound.</div>`}
+  else if(sheet.kind==="import"){b=`<h3>Import workouts</h3><div class="field"><label for="impText">Paste text or JSON</label><textarea id="impText" class="code" style="min-height:180px" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="# 6×1000&#10;2mi Warm-up @7.0-7.5&#10;6x 1000m Rep @9.1 / 400m Jog recovery @6.5-7.0&#10;2mi Cool-down @7.0-7.5"></textarea></div>
+     <div class="field"><label for="impFile">Or choose a .txt or .json file</label><input id="impFile" type="file" accept=".txt,.json,.md,text/plain,application/json"></div>
+     ${sheet.err?`<div class="err" role="alert">${esc(sheet.err)}</div>`:""}
+     <div class="actions"><button class="btn primary" data-act="do-import">Import</button><button class="btn" data-act="close-sheet">Cancel</button></div>${formatHelp()}<div class="help">Start a line with <code>#</code> to begin a new workout, so one paste can hold a whole training block. Lines starting with <code>&gt;</code> become the workout's notes. JSON exported from this app imports as-is.</div>`}
+  else if(sheet.kind==="export"){b=`<h3>${esc(sheet.title)}</h3><div class="tabs"><button data-act="exp-text" aria-pressed="${sheet.mode==="text"}">Text</button><button data-act="exp-json" aria-pressed="${sheet.mode==="json"}">JSON</button></div>
+     <textarea id="expText" class="code" readonly>${esc(sheet.mode==="text"?sheet.list.map(workoutText).join("\n\n"):exportJSON(sheet.list))}</textarea>
+     <div class="actions"><button class="btn primary" data-act="copy">Copy</button>${navigator.share?`<button class="btn" data-act="sharenative">Share</button>`:""}<button class="btn" data-act="close-sheet">Close</button></div>`}
+  else if(sheet.kind==="confirm"){b=`<h3>${esc(sheet.title)}</h3><p>${esc(sheet.body)}</p><div class="actions"><button class="btn danger" data-act="confirm-yes">${esc(sheet.yes)}</button><button class="btn" data-act="close-sheet">Cancel</button></div>`}
+  return`<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true">${b}</div></div>`}
+function openSheet(s){sheet=s;if(view==="run"){const d=document.createElement("div");d.innerHTML=sheetHTML();$("#app").appendChild(d.firstChild)}else render()}
+function closeSheet(){sheet=null;if(view==="run"){const s=document.querySelector(".scrim");if(s)s.remove()}else render()}
+function toast(msg){const t=document.createElement("div");t.className="toast";t.setAttribute("role","status");t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3200)}
+
+/* ---------- events ---------- */
+document.addEventListener("click",async e=>{const el=e.target.closest("[data-act]");if(!el)return;const a=el.dataset.act;
+  if(a==="scrim"){if(e.target===el)closeSheet();return}
+  const i=+el.dataset.i,j=el.dataset.j!==undefined?+el.dataset.j:-1;
+  switch(a){
+  case"open":go("detail",el.dataset.id);break;
+  case"home":P=null;go("library");break;
+  case"import":openSheet({kind:"import"});break;
+  case"settings":openSheet({kind:"settings"});break;
+  case"close-sheet":closeSheet();break;
+  case"new":ED={id:uid(),name:"",notes:"",items:[blankStep("warmup"),{repeat:6,steps:[blankStep("work"),blankStep("recovery")]},blankStep("cooldown")],_new:true};edTab="steps";edErr="";go("editor");break;
+  case"edit":ED=JSON.parse(JSON.stringify(getW(cur)));edTab="steps";edErr="";go("editor");break;
+  case"start":startWorkout(getW(cur));break;
+  case"again":startWorkout(P.w);break;
+  case"dup":{const w=JSON.parse(JSON.stringify(getW(cur)));w.id=uid();w.name+=" (copy)";workouts.splice(workouts.indexOf(getW(cur))+1,0,w);persist();go("detail",w.id);toast("Duplicated");break}
+  case"del":openSheet({kind:"confirm",title:"Delete this workout?",body:`“${getW(cur).name}” will be removed from this device.`,yes:"Delete",fn:()=>{workouts=workouts.filter(w=>w.id!==cur);persist();go("library");toast("Workout deleted")}});break;
+  case"confirm-yes":{const f=sheet.fn;closeSheet();f();break}
+  case"share":openSheet({kind:"export",title:"Share or copy",list:[getW(cur)],mode:"text"});break;
+  case"export-all":openSheet({kind:"export",title:"Export all workouts",list:workouts,mode:"json"});break;
+  case"exp-text":sheet.mode="text";render();break;
+  case"exp-json":sheet.mode="json";render();break;
+  case"copy":{const ta=$("#expText");try{await navigator.clipboard.writeText(ta.value);toast("Copied")}catch(err){ta.focus();ta.select();ta.setSelectionRange(0,ta.value.length);toast("Selected. Tap Copy in the menu to finish.")}break}
+  case"sharenative":{try{await navigator.share({title:"Treadmill workouts",text:$("#expText").value})}catch(err){}break}
+  case"do-import":{try{const list=parseAny($("#impText").value);if(!list.length)throw new Error("Nothing to import.");list.forEach(w=>{if(!flatten(w).length)throw new Error(`“${w.name}” has no segments with a length.`)});workouts=workouts.concat(list);persist();sheet=null;go("library");toast(`Imported ${list.length} workout${list.length>1?"s":""}`)}catch(err){sheet.err=err.message;const t=$("#impText").value;render();$("#impText").value=t}break}
+  case"unit-mph":case"unit-kmh":settings.unit=a.slice(5);save("tit.settings",settings);render();break;
+  case"adv-manual":case"adv-auto":settings.advance=a.slice(4);save("tit.settings",settings);render();break;
+  case"test-sound":initAudio();chime();setTimeout(()=>beep(880,.13),1200);setTimeout(()=>beep(1320,.35),2000);setTimeout(()=>say("Rep 1 of 6. Set belt to 9.1. Until belt reads 2.62 miles."),2400);break;
+  case"reset":openSheet({kind:"confirm",title:"Restore sample workouts?",body:"The sample workouts will be added back. Your own workouts stay.",yes:"Restore",fn:()=>{workouts=workouts.concat(parseText(SEED,"mph"));persist();render();toast("Samples restored")}});break;
+  /* editor */
+  case"tab-steps":edSyncHeader();if(edFromText())edTab="steps";render();break;
+  case"tab-text":edSyncHeader();edTab="text";edErr="";render();break;
+  case"ed-cancel":ED=null;go(cur&&getW(cur)?"detail":"library");break;
+  case"ed-save":{edSyncHeader();if(edTab==="text"&&!edFromText())return render();
+    if(!ED.name.trim()){edErr="Give the workout a name.";return render()}
+    const v=edValidate();if(v){edErr=v;return render()}
+    if(!flatten(ED).length){edErr="Add at least one segment with a length.";return render()}
+    ED.items=ED.items.filter(it=>!it.repeat||it.steps.length);const isNew=ED._new;delete ED._new;ED.name=ED.name.trim();
+    const ix=workouts.findIndex(w=>w.id===ED.id);if(ix>=0)workouts[ix]=ED;else workouts.unshift(ED);persist();const id=ED.id;ED=null;go("detail",id);toast(isNew?"Workout saved":"Changes saved");break}
+  case"ed-add":edSyncHeader();ED.items.push(blankStep(ED.items.length?"work":"warmup"));render();break;
+  case"ed-addrep":edSyncHeader();ED.items.push({repeat:6,steps:[blankStep("work"),blankStep("recovery")]});render();break;
+  case"ed-addin":edSyncHeader();ED.items[i].steps.push(blankStep("recovery"));render();break;
+  case"ed-del":edSyncHeader();edList(i,j).splice(j>=0?j:i,1);render();break;
+  case"ed-dupstep":{edSyncHeader();const L=edList(i,j),k=j>=0?j:i;L.splice(k+1,0,JSON.parse(JSON.stringify(L[k])));render();break}
+  case"ed-up":case"ed-down":{edSyncHeader();const L=edList(i,j),k=j>=0?j:i,n=a==="ed-up"?k-1:k+1;if(n<0||n>=L.length)return;[L[k],L[n]]=[L[n],L[k]];render();break}
+  /* run */
+  case"spd-up":case"spd-down":{if(!P.paused)integrate(Date.now());const step=settings.unit==="kmh"?0.1/KM:0.1;let nv=(P.spd||0)+(a==="spd-up"?step:-step);
+    nv=settings.unit==="kmh"?Math.round(nv*KM*10)/10/KM:Math.round(nv*10)/10;P.spd=Math.max(0,round3(nv));$("#pSpd").textContent=dispSpeed(P.spd);paint();break}
+  case"p-toggle":if(P.paused){initAudio();P.lastT=Date.now();P.paused=false;acquireWake();paintAll();say("Go.")}
+    else{integrate(Date.now());P.paused=true;try{speechSynthesis.cancel()}catch(err){}paintAll()}break;
+  case"p-next":initAudio();if(!P.paused)integrate(Date.now());if(P.idx+1>=P.tl.length)return finish(true);enterStep(P.idx+1);P.lastT=Date.now();paintAll();if(!P.paused)announce(true);break;
+  case"p-back":if(P.idx===0)return;initAudio();if(!P.paused)integrate(Date.now());enterStep(P.idx-1);P.lastT=Date.now();paintAll();if(!P.paused)announce(false);break;
+  case"p-end":openSheet({kind:"confirm",title:"End this workout?",body:"You'll see what you finished. Distance counts up to the last belt mark you tapped.",yes:"End workout",fn:()=>{if(!P.paused)integrate(Date.now());finish(false)}});break;
+  }});
+document.addEventListener("input",e=>{const el=e.target;
+  if(el.dataset.set){settings[el.dataset.set]=el.checked;save("tit.settings",settings);return}
+  if(!el.dataset.f||!ED)return;const i=+el.dataset.i,j=+el.dataset.j,f=el.dataset.f;
+  if(f==="times"){ED.items[i].repeat=Math.max(1,parseInt(el.value)||1)}
+  else{const s=edGet(i,j);
+    if(f==="name")s.name=el.value;
+    else if(f==="note")s.note=el.value;
+    else if(f==="type"){s.type=el.value;el.closest(".estep").className="estep k-"+KIND[s.type]}
+    else if(f==="du"){const nv=el.value;
+      if(nv==="time"){if(isDist(s)){s.dur=Math.round(stepSecs(s))||180;s.dist=null;s.du=null}}
+      else{if(!isDist(s)){let m=stepMeters(s)||400;m=nv==="m"?Math.round(m/10)*10:Math.round(m/DU[nv]*20)/20*DU[nv];s.dist=round3(m||DU[nv]);s.dur=null}s.du=nv}
+      edSyncHeader();render();return}
+    else if(f==="dist"){const v=num(el.value);s.dist=v==null?0:round3(v*DU[s.du||"m"])}
+    else if(f==="min"||f==="sec"){const row=el.closest(".estep");const m=parseInt(row.querySelector('[data-f="min"]').value)||0,sc=parseInt(row.querySelector('[data-f="sec"]').value)||0;s.dur=Math.max(0,m*60+sc)}
+    else if(f==="speed"){const v=num(el.value);s.speed=v==null?null:toMph(v);s.byPace=null}
+    else if(f==="speedHi"){const v=num(el.value);s.speedHi=v==null?null:toMph(v);s.byPace=null}
+    else if(f==="incline"){s.incline=num(el.value)}}
+  const sum=$("#edSum");if(sum)sum.textContent=edSummary()});
+document.addEventListener("change",async e=>{if(e.target.id!=="impFile")return;const f=e.target.files&&e.target.files[0];if(!f)return;
+  try{$("#impText").value=await f.text()}catch(err){toast("Couldn't read that file.")}});
+
+render();
+})();
+</script>
+<script>
+if("serviceWorker" in navigator&&location.protocol==="https:"){navigator.serviceWorker.register("sw.js").catch(()=>{})}
+</script>
+</body>
+</html>
