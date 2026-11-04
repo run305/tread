@@ -315,48 +315,21 @@ function parseAny(text){const t=text.trim();if(!t)throw new Error("Paste a worko
   return parseText(t,settings.unit)}
 function exportJSON(list){return JSON.stringify({format:"treadmill-intervals",version:3,speedUnit:"mph",distanceUnit:"meters",workouts:list.map(w=>({name:w.name,notes:w.notes,items:w.items}))},null,2)}
 
-const SEED=`# MM27 Intervals: 6×1000
-> Miami Marathon plan, week 2. Reps target 6:25–6:35/mi, that's belt 9.1–9.4 mph. Each 1000 m rep should take about 4:00–4:06; the segment timer cross-checks it. Recoveries are an easy jog, never a walk.
-2mi Warm-up @7.0-7.5 (Easy and conversational. Let the legs come to you; the work starts at 2.00 mi.)
-1000m Rep 1 of 6 [work] @9.1 (Target pace 6:25–6:35/mi. This rep should take about 4:00–4:06; glance at the segment timer as you finish.)
-400m Jog recovery @6.5-7.0 (Easy jog, never a walk. Shake the arms out, breathe down.)
-1000m Rep 2 of 6 [work] @9.1 (Target pace 6:25–6:35/mi, about 4:00–4:06. Settle into the rhythm.)
-400m Jog recovery @6.5-7.0 (Easy jog. Halfway through the recoveries after the next rep; stay patient.)
-1000m Rep 3 of 6 [work] @9.2 (Belt up a notch to 9.2 mph. Target pace 6:25–6:35/mi, about 4:00–4:06 for the rep.)
-400m Jog recovery @6.5-7.0 (Easy jog. Three reps banked after this breather.)
-1000m Rep 4 of 6 [work] @9.2 (Target pace 6:25–6:35/mi, about 4:00–4:06. Form first: tall, quick feet.)
-400m Jog recovery @6.5-7.0 (Easy jog. Two reps left after this one.)
-1000m Rep 5 of 6 [work] @9.3 (Belt up to 9.3 mph. Target pace 6:25–6:35/mi, about 4:00–4:06. This is where it gets honest.)
-400m Jog recovery @6.5-7.0 (Last breather. One rep to go; make it count.)
-1000m Rep 6 of 6 [work] @9.3-9.4 (Final rep, belt 9.3–9.4 mph. Target pace 6:25–6:35/mi, about 4:00–4:06. Empty the tank, hold form.)
-2.03mi Cool-down @7.0-7.5 (Easy to the finish at 9.00 mi. Let the heart rate drift down; the workout's already in the bank.)
-
-# Quick cue test
-> Short segments so you can hear every cue before a real session.
-40m Warm-up @5.0 1%
-2x 40m Run @8.0 1% / 30m Jog @5.5 1%
-40m Cool-down @5.0 0%
-
-# Mile repeats
-1.5mi Warm-up @6.5-7.0 1%
-4x 1mi Run @8.8 1% / 0.25mi Jog @6.0-6.5 1%
-1mi Cool-down @6.0-6.5 1%
-
-# Yasso 800s
-1.5mi Warm-up @6.5-7.0 1%
-8x 800m Run @9.2 1% / 400m Jog @5.5-6.0 1%
-1mi Cool-down @6.0-6.5 1%
-
-# Hill repeats
-1.5mi Warm-up @6.5-7.0 1%
-6x 400m Hill @7.5 6% / 400m Recovery @6.0 1%
-1mi Cool-down @6.0 0%`;
+const SEED=``; // Repo-managed workouts. Porter adds interval workouts here before each session; the merge below adds them to any device on load, and removes the old defaults.
 const persist=()=>save("tit3.workouts",workouts);
+const DEFAULT_WORKOUTS=["MM27 Intervals: 6\u00d71000","Quick cue test","Mile repeats","Yasso 800s","Hill repeats","1K repeats","Tempo blocks","Tempo run"];
+let seedWorkouts=[];try{seedWorkouts=SEED.trim()?parseText(SEED,"mph"):[]}catch(e){seedWorkouts=[]}
 if(!Array.isArray(workouts)){
   /* keep anything built in the earlier version, minus its stock samples */
-  const prev=load("tit.workouts",[]),stock=["Quick cue test","1K repeats","Yasso 800s","Hill repeats","Tempo blocks","Mile repeats","Tempo run"];
+  const prev=load("tit.workouts",[]),stock=DEFAULT_WORKOUTS;
   const keep=Array.isArray(prev)?prev.filter(w=>w&&w.items&&!stock.includes(w.name)).map(w=>{try{const n=normWorkout(w);n.id=w.id||n.id;return n}catch(e){return null}}).filter(Boolean):[];
-  workouts=parseText(SEED,"mph").concat(keep);persist()}
+  workouts=seedWorkouts.concat(keep);persist()}
+else{
+  /* Repo-managed: remove the old defaults from any device, and merge in any SEED workouts not already present, so a repo update reaches every device on next load without a manual import. */
+  const filtered=workouts.filter(w=>w&&!DEFAULT_WORKOUTS.includes(w.name));
+  const names=new Set(filtered.map(w=>w.name));
+  const merged=filtered.concat(seedWorkouts.filter(w=>!names.has(w.name)));
+  if(merged.length!==workouts.length||seedWorkouts.some(w=>!names.has(w.name))){workouts=merged;persist()} }
 
 /* ---------- audio ---------- */
 let ac=null;
