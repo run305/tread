@@ -327,7 +327,27 @@ const SEED=`# MM27 5x1000
 1000m Rep 4 @9.3
 400m Jog recovery @6.5
 1000m Rep 5 @9.3
-2.9mi Cool-down @7.0`; // Repo-managed workouts. Porter adds interval workouts here before each session; the merge below adds them to any device on load, and removes the old defaults.
+2.9mi Cool-down @7.0
+
+# MM27 8x1000
+> Thu Nov 12, 2026. Miami Marathon plan, week 5. Reps target 6:20-6:30/mi, belt 9.3-9.4 mph. Recoveries are an easy jog, never a walk.
+2mi Warm-up @7.0
+1000m Rep 1 @9.3
+400m Jog recovery @6.5
+1000m Rep 2 @9.3
+400m Jog recovery @6.5
+1000m Rep 3 @9.3
+400m Jog recovery @6.5
+1000m Rep 4 @9.4
+400m Jog recovery @6.5
+1000m Rep 5 @9.4
+400m Jog recovery @6.5
+1000m Rep 6 @9.4
+400m Jog recovery @6.5
+1000m Rep 7 @9.4
+400m Jog recovery @6.5
+1000m Rep 8 @9.4
+1.29mi Cool-down @7.0`; // Repo-managed workouts. Porter adds interval workouts here before each session; the merge below adds them to any device on load, and removes the old defaults.
 const persist=()=>save("tit3.workouts",workouts);
 const DEFAULT_WORKOUTS=["MM27 Intervals: 6\u00d71000","Quick cue test","Mile repeats","Yasso 800s","Hill repeats","1K repeats","Tempo blocks","Tempo run"];
 let seedWorkouts=[];try{seedWorkouts=SEED.trim()?parseText(SEED,"mph"):[]}catch(e){seedWorkouts=[]}
@@ -632,4 +652,4 @@ if("serviceWorker" in navigator&&location.protocol==="https:"){navigator.service
 </body>
 </html>
 
-<!-- redeploy 2026-11-04: trigger Pages build for MM27 5x1000 -->
+<!-- redeploy 2026-11-09: trigger Pages build for MM27 8x1000 -->
