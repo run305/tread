@@ -169,6 +169,15 @@ ol.segs .rephead{background:transparent;border:0;padding:6px 2px 0;color:var(--f
 .big-sub button{background:none;color:var(--muted);font-weight:700;text-decoration:underline;padding:8px 0;font-size:1rem}
 .big-sub button:disabled{opacity:.35}
 
+/* touch lock — overlay blocks stray taps; hold the button 2s to unlock */
+.lock-overlay{position:fixed;inset:0;z-index:60;display:flex;align-items:flex-end;justify-content:center;padding:0 20px calc(28px + env(safe-area-inset-bottom,0px));pointer-events:auto}
+.lock-card{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:340px}
+.lock-pill{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:8px 16px;font-weight:700;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+.lock-pill svg{width:18px;height:18px}
+.unlock-btn{position:relative;width:100%;min-height:64px;border-radius:16px;border:1.5px solid var(--c);background:var(--panel);font-size:1.2rem;font-weight:700;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.unlock-btn .fill{position:absolute;inset:0;width:0%;background:var(--cs);pointer-events:none}
+.unlock-btn .unlock-label{position:relative;pointer-events:none}
+
 /* done (from your tracker) */
 .done{text-align:center;background:var(--panel);border:1.5px solid var(--recover);border-radius:18px;padding:30px 20px 24px;margin-bottom:20px}
 .done .check-mark{width:64px;height:64px;margin:0 auto 12px;border-radius:50%;background:var(--recover-soft);border:2px solid var(--recover);display:flex;align-items:center;justify-content:center;color:var(--recover)}
@@ -245,7 +254,8 @@ const ICON={
   tick:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
   bigtick:'<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
   sun:'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
-  full:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>'
+  full:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>',
+  lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>'
 };
 
 /* ---------- storage ---------- */
@@ -458,7 +468,7 @@ function updateWake(){const el=$("#pWake");if(!el)return;
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&P&&!P.done&&!P.paused){if(!(wakeMode==="native"&&wakeLock&&!wakeLock.released))acquireWake();tick()}});
 
 /* ---------- state ---------- */
-let view="library",cur=null,ED=null,edTab="steps",edErr="",sheet=null,P=null,big=false;
+let view="library",cur=null,ED=null,edTab="steps",edErr="",sheet=null,P=null,big=false,locked=false,unlockGrace=0;
 function render(){let h="";
   if(view==="library")h=libraryHTML();else if(view==="detail")h=detailHTML();else if(view==="editor")h=editorHTML();else if(view==="run")h=runHTML();else if(view==="done")h=doneHTML();
   $("#app").innerHTML=h+(sheet?sheetHTML():"");if(view==="run"){updateWake();paint()}}
@@ -591,6 +601,7 @@ function paintBig(){const s=curStep(),est=stepSecs(s);
   const done=prev+frac*stepMeters(s),ob=$("#bigOverallBar");if(ob)ob.style.width=Math.min(100,done/total*100).toFixed(1)+"%";
   const bt=$("#bigBelt");if(bt)bt.textContent="Belt "+mark(done)+" "+distLabel()}
 function paintAll(){if(view!=="run")return;const y=window.scrollY;render();window.scrollTo(0,y)}
+function lockHTML(){return`<div class="lock-overlay"><div class="lock-card"><div class="lock-pill">${ICON.lock}<span>Screen locked</span></div><button id="unlockBtn" class="unlock-btn"><span class="fill" id="unlockFill"></span><span class="unlock-label">Hold to unlock</span></button></div></div>`}
 function bigHTML(){const s=curStep(),nx=P.tl[P.idx+1];P.lastIdx=P.idx;const k=KIND[s.type];
   const workLeft=P.tl.slice(P.idx).filter(x=>x.type==="work").length;
   const total=P.tl[P.tl.length-1].endsAt||0;
@@ -602,7 +613,7 @@ function bigHTML(){const s=curStep(),nx=P.tl[P.idx+1];P.lastIdx=P.idx;const k=KI
   const nxText=nx?`${esc(segLabel(nx))} <span>${nx.speed!=null?`belt ${speedText(nx)} ${unitLabel()}, `:""}${isDist(nx)?`until ${mark(nx.endsAt)} ${distLabel()}`:`for ${fmtDur(nx.dur)}`}</span>`:`Finish <span>you're done at ${mark(s.endsAt)} ${distLabel()}</span>`;
   const hint=isDist(s)&&!auto()?`when the belt reads ${mark(s.endsAt)} ${distLabel()}`:isDist(s)?`moves on by itself at ${mark(s.endsAt)} ${distLabel()}, or tap`:`moves on by itself at 0:00, or tap`;
   return`<div class="bigview k-${k}">
-   <div class="big-top"><span class="nm">${esc(P.w.name)}</span><span class="tm" id="bigSession">${fmtDur(P.session)}</span><button class="ibtn ghost" data-act="p-big" aria-label="Exit big display">✕</button></div>
+   <div class="big-top"><span class="nm">${esc(P.w.name)}</span><span class="tm" id="bigSession">${fmtDur(P.session)}</span><button class="ibtn ghost" data-act="p-lock" aria-label="Lock screen">${ICON.lock}</button><button class="ibtn ghost" data-act="p-big" aria-label="Exit big display">✕</button></div>
    ${P.paused?`<p class="paused-banner">PAUSED</p>`:""}
    <div class="big-kind">${TYPES[s.type]}${isDist(s)?`, ${lenText(s)}`:""}</div>
    <div class="big-name">${esc(s.name)}</div>
@@ -617,7 +628,7 @@ function bigHTML(){const s=curStep(),nx=P.tl[P.idx+1];P.lastIdx=P.idx;const k=KI
    <div class="big-next"><span class="lab">Up next</span><span class="v">${nxText}</span></div>
    <div class="big-controls"><button class="btn-pause" data-act="p-toggle">${P.paused?"Resume":"Pause"}</button>
     <button class="btn-next" data-act="p-next">${nx?"NEXT SEGMENT":"FINISH"}<small>${hint}</small></button></div>
-   <div class="big-sub"><button data-act="p-back" ${P.idx===0?"disabled":""}>← Back</button><button data-act="p-end">End workout</button></div></div>`}
+   <div class="big-sub"><button data-act="p-back" ${P.idx===0?"disabled":""}>← Back</button><button data-act="p-end">End workout</button></div>${locked?lockHTML():""}</div>`}
 function runHTML(){if(big)return bigHTML();const s=curStep(),nx=P.tl[P.idx+1];P.lastIdx=P.idx;const k=KIND[s.type];
   const spdCell=s.speed!=null?`<div class="hero-cell"><div class="lab">Set belt to</div>${auto()?`<div class="spd-row"><button data-act="spd-down" aria-label="Lower speed">−</button><div class="v" id="pSpd">${dispSpeed(P.spd)}</div><button data-act="spd-up" aria-label="Raise speed">+</button></div><div class="sub">${unitLabel()}, ${pace(P.spd)}/${distLabel()}${s.speedHi!=null?`, plan ${speedText(s)}`:""}</div>`:`<div class="v">${speedText(s)} <small>${unitLabel()}</small></div><div class="sub">${s.speedHi!=null?`${pace(s.speedHi)}–${pace(s.speed)}`:pace(s.speed)} /${distLabel()}${s.incline!=null?`, ${s.incline}% incline`:""}</div>`}</div>`
     :`<div class="hero-cell"><div class="lab">Incline</div><div class="v">${s.incline!=null?`${s.incline} <small>%</small>`:"–"}</div></div>`;
@@ -626,7 +637,7 @@ function runHTML(){if(big)return bigHTML();const s=curStep(),nx=P.tl[P.idx+1];P.
   const hint=isDist(s)&&!auto()?`when the belt reads ${mark(s.endsAt)} ${distLabel()}`:isDist(s)?`moves on by itself at ${mark(s.endsAt)} ${distLabel()}, or tap`:`moves on by itself at 0:00, or tap`;
   const nxText=nx?`${esc(segLabel(nx))} <span>${nx.speed!=null?`belt ${speedText(nx)} ${unitLabel()}, `:""}${isDist(nx)?`until ${mark(nx.endsAt)} ${distLabel()}`:`for ${fmtDur(nx.dur)}`}</span>`:`Finish <span>you're done at ${mark(s.endsAt)} ${distLabel()}</span>`;
   return`<div class="wrap" style="padding-bottom:40px">
-   <div class="bar"><button class="ibtn ghost" data-act="p-end">End</button><h2 style="font-size:1rem;text-align:center;color:var(--muted)">${esc(P.w.name)}</h2><span id="pWake" class="wake" style="font-size:.8rem"></span><button class="ibtn" data-act="p-big" aria-label="Big display">${ICON.full}</button></div>
+   <div class="bar"><button class="ibtn ghost" data-act="p-end">End</button><h2 style="font-size:1rem;text-align:center;color:var(--muted)">${esc(P.w.name)}</h2><span id="pWake" class="wake" style="font-size:.8rem"></span><button class="ibtn" data-act="p-big" aria-label="Big display">${ICON.full}</button><button class="ibtn" data-act="p-lock" aria-label="Lock screen">${ICON.lock}</button></div>
    ${P.paused?`<p class="paused-banner">PAUSED</p>`:""}
    <div class="timers"><div class="timer-box"><div class="lab">Session</div><div class="v" id="sessionTimer">${fmtDur(P.session)}</div></div><div class="timer-box"><div class="lab">This segment</div><div class="v" id="segTimer">${fmtDur(P.el)}</div></div><button class="btn-pause" data-act="p-toggle">${P.paused?"Resume":"Pause"}</button></div>
    <div class="hero k-${k}"><div class="kind">${TYPES[s.type]}${isDist(s)?`, ${lenText(s)}`:""}</div><div class="seg-name">${esc(s.name)}</div>
@@ -637,8 +648,8 @@ function runHTML(){if(big)return bigHTML();const s=curStep(),nx=P.tl[P.idx+1];P.
    <div class="upnext"><span class="lab">Up next</span><span class="v">${nxText}</span></div>
    <div class="controls"><button class="btn-back" data-act="p-back" ${P.idx===0?"disabled":""}>← Back</button>
     <button class="btn-next" data-act="p-next">${nx?"NEXT SEGMENT":"FINISH"}<small>${hint}</small></button></div>
-   <h2 class="lab list-title">All segments, by belt distance</h2>${segListHTML(P.tl,P.idx)}</div>`}
-function finish(completed){if(!P||P.done)return;clearInterval(P.timer);big=false;exitFS();
+   <h2 class="lab list-title">All segments, by belt distance</h2>${segListHTML(P.tl,P.idx)}${locked?lockHTML():""}</div>`}
+function finish(completed){if(!P||P.done)return;clearInterval(P.timer);big=false;locked=false;exitFS();
   const doneIdx=completed?P.tl.length:P.idx;const belt=doneIdx>0?P.tl[doneIdx-1].endsAt:0;
   P.result={completed,time:P.session,belt,segs:doneIdx};P.done=true;releaseWake();
   if(completed){beep(988,.15);setTimeout(()=>beep(1319,.15),180);setTimeout(()=>beep(1760,.4),360);setTimeout(()=>say(`Workout complete. ${markWords(belt)} on the belt. Nice work.`),500)}else{try{speechSynthesis.cancel()}catch(e){}}
@@ -673,8 +684,18 @@ function openSheet(s){sheet=s;if(view==="run"){const d=document.createElement("d
 function closeSheet(){sheet=null;if(view==="run"){const s=document.querySelector(".scrim");if(s)s.remove()}else render()}
 function toast(msg){const t=document.createElement("div");t.className="toast";t.setAttribute("role","status");t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3200)}
 
+/* ---------- touch lock: hold the unlock button 2s ---------- */
+let unlockT=null;
+function unlockReset(){if(unlockT){clearTimeout(unlockT);unlockT=null}const f=$("#unlockFill");if(f){f.style.transition="none";f.style.width="0%"}}
+document.addEventListener("pointerdown",e=>{const t=e.target;const b=t&&t.closest?t.closest("#unlockBtn"):null;if(!b||!locked)return;e.preventDefault();
+  const f=$("#unlockFill");if(f){f.style.transition="none";f.style.width="0%";void f.offsetWidth;f.style.transition="width 2s linear";f.style.width="100%"}
+  unlockT=setTimeout(()=>{unlockT=null;locked=false;unlockGrace=Date.now();paintAll()},2000)});
+["pointerup","pointercancel","pointerleave"].forEach(t=>document.addEventListener(t,()=>{if(unlockT)unlockReset()}));
+
 /* ---------- events ---------- */
 document.addEventListener("click",async e=>{const el=e.target.closest("[data-act]");if(!el)return;const a=el.dataset.act;
+  if(locked)return;
+  if(Date.now()-unlockGrace<600)return;
   if(a==="scrim"){if(e.target===el)closeSheet();return}
   const i=+el.dataset.i,j=el.dataset.j!==undefined?+el.dataset.j:-1;
   switch(a){
@@ -721,6 +742,7 @@ document.addEventListener("click",async e=>{const el=e.target.closest("[data-act
   case"spd-up":case"spd-down":{if(!P.paused)integrate(Date.now());const step=settings.unit==="kmh"?0.1/KM:0.1;let nv=(P.spd||0)+(a==="spd-up"?step:-step);
     nv=settings.unit==="kmh"?Math.round(nv*KM*10)/10/KM:Math.round(nv*10)/10;P.spd=Math.max(0,round3(nv));$("#pSpd").textContent=dispSpeed(P.spd);paint();break}
   case"p-big":big=!big;if(big)enterFS();else exitFS();paintAll();break;
+  case"p-lock":locked=true;paintAll();break;
   case"p-toggle":if(P.paused){initAudio();P.lastT=Date.now();P.paused=false;acquireWake();paintAll();say("Go.")}
     else{integrate(Date.now());P.paused=true;try{speechSynthesis.cancel()}catch(err){}paintAll()}break;
   case"p-next":initAudio();if(!P.paused)integrate(Date.now());if(P.idx+1>=P.tl.length)return finish(true);enterStep(P.idx+1);P.lastT=Date.now();paintAll();if(!P.paused)announce(true);break;
