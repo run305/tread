@@ -42,7 +42,7 @@
   --recover:#4ADE80;--recover-soft:rgba(74,222,128,.12);--easy:#5CB3E6;--easy-soft:rgba(92,179,230,.12);--hero-cell:rgba(92,179,230,.08);color-scheme:dark}
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--text);font:400 17px/1.45 var(--body);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
+body{margin:0;background:var(--bg);color:var(--text);font:400 17px/1.45 var(--body);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:pan-x pan-y}
 input,textarea{-webkit-user-select:text;user-select:text}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;border:none}
@@ -506,6 +506,10 @@ function updateWake(){const el=$("#pWake");if(!el)return;
   else if(wakeMode==="released"){el.className="wake bad";el.textContent="Screen lock came back. Tap Pause twice."}
   else{el.className="wake bad";el.textContent="Screen may sleep. Set Auto-Lock to Never."}}
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&P&&!P.done&&!P.paused){if(!(wakeMode==="native"&&wakeLock&&!wakeLock.released))acquireWake();tick()}});
+/* No-zoom: iOS Safari ignores user-scalable=no, so block pinch at the gesture level. */
+["gesturestart","gesturechange","gestureend"].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
+document.addEventListener("touchmove",e=>{if(e.touches.length>1)e.preventDefault()},{passive:false});
+document.addEventListener("dblclick",e=>e.preventDefault());
 
 /* ---------- state ---------- */
 let view="library",cur=null,ED=null,edTab="steps",edErr="",sheet=null,P=null,big=false,locked=false,unlockGrace=0;
