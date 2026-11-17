@@ -135,7 +135,7 @@ ol.segs .rephead{background:transparent;border:0;padding:6px 2px 0;color:var(--f
 .wake.bad{color:var(--work);font-weight:600}
 
 /* big display — glanceable mid-workout view */
-.bigview{min-height:100dvh;min-height:100svh;display:flex;flex-direction:column;gap:12px;padding:calc(8px + env(safe-area-inset-top,0px)) 18px calc(16px + env(safe-area-inset-bottom,0px))}
+.bigview{position:fixed;inset:0;z-index:15;overflow:auto;min-height:100dvh;min-height:100svh;display:flex;flex-direction:column;gap:12px;padding:calc(8px + env(safe-area-inset-top,0px)) 18px calc(16px + env(safe-area-inset-bottom,0px))}
 .big-top{display:flex;align-items:center;gap:10px;color:var(--muted);font-weight:600;font-size:.95rem}
 .big-top .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .big-top .tm{font-variant-numeric:tabular-nums;font-weight:700;color:var(--text)}
@@ -177,6 +177,37 @@ ol.segs .rephead{background:transparent;border:0;padding:6px 2px 0;color:var(--f
 .unlock-btn{position:relative;width:100%;min-height:64px;border-radius:16px;border:1.5px solid var(--c);background:var(--panel);font-size:1.2rem;font-weight:700;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .unlock-btn .fill{position:absolute;inset:0;width:0%;background:var(--cs);pointer-events:none}
 .unlock-btn .unlock-label{position:relative;pointer-events:none}
+
+/* big view scales with the device: portrait lays out flat, landscape splits
+   into two columns sized by viewport height, big screens get bigger type */
+.big-main,.big-left-col,.big-right-col{display:contents}
+@media (orientation:landscape){
+  .bigview{padding:calc(6px + env(safe-area-inset-top,0px)) 22px calc(10px + env(safe-area-inset-bottom,0px));gap:8px}
+  .big-main{display:grid;grid-template-columns:1.15fr .85fr;gap:2px 28px;align-items:center;flex:1;min-height:0}
+  .big-left-col,.big-right-col{display:flex;flex-direction:column;gap:8px;min-width:0}
+  .big-name{font-size:clamp(2.2rem,9vh,3.8rem)}
+  .big-speed .num{font-size:clamp(3.8rem,24vh,7rem)}
+  .big-speed .adj{width:48px;height:48px;font-size:1.8rem}
+  .big-count{font-size:clamp(1.1rem,4vh,1.5rem)}
+  .big-pace{font-size:clamp(1rem,3.6vh,1.4rem)}
+  .big-left{font-size:clamp(1.2rem,4.5vh,1.8rem)}
+  .big-remain,.big-belt{font-size:clamp(1rem,3.4vh,1.35rem)}
+  .big-next{font-size:clamp(.95rem,3.2vh,1.25rem)}
+  .big-note{font-size:clamp(.9rem,3vh,1.15rem)}
+  .big-controls{gap:10px}
+  .big-controls button{min-height:56px;font-size:1.25rem}
+  .big-sub button{min-height:44px;font-size:1rem}
+}
+@media (min-width:700px) and (orientation:portrait){
+  .big-name{font-size:clamp(3.2rem,11vw,9rem)}
+  .big-speed .num{font-size:clamp(6rem,26vw,15rem)}
+  .big-count{font-size:clamp(1.5rem,3.5vw,2.6rem)}
+  .big-pace{font-size:clamp(1.4rem,3vw,2.2rem)}
+  .big-left{font-size:clamp(1.6rem,4vw,3rem)}
+  .big-remain,.big-belt{font-size:clamp(1.3rem,2.8vw,2rem)}
+  .big-next{font-size:clamp(1.2rem,2.6vw,1.9rem)}
+  .big-note{font-size:clamp(1.1rem,2.4vw,1.7rem)}
+}
 
 /* done (from your tracker) */
 .done{text-align:center;background:var(--panel);border:1.5px solid var(--recover);border-radius:18px;padding:30px 20px 24px;margin-bottom:20px}
@@ -615,10 +646,12 @@ function bigHTML(){const s=curStep(),nx=P.tl[P.idx+1];P.lastIdx=P.idx;const k=KI
   return`<div class="bigview k-${k}">
    <div class="big-top"><span class="nm">${esc(P.w.name)}</span><span class="tm" id="bigSession">${fmtDur(P.session)}</span><button class="ibtn ghost" data-act="p-lock" aria-label="Lock screen">${ICON.lock}</button><button class="ibtn ghost" data-act="p-big" aria-label="Exit big display">✕</button></div>
    ${P.paused?`<p class="paused-banner">PAUSED</p>`:""}
+   <div class="big-main"><div class="big-left-col">
    <div class="big-kind">${TYPES[s.type]}${isDist(s)?`, ${lenText(s)}`:""}</div>
    <div class="big-name">${esc(s.name)}</div>
    <div class="big-count">Segment <b>${P.idx+1} of ${P.tl.length}</b>${s.reps?` · Rep <b>${s.rep} of ${s.reps}</b>`:""}</div>
    ${spdHtml}
+   </div><div class="big-right-col">
    <div class="big-left">${workLeft>0?`${workLeft} interval${workLeft===1?"":"s"} left`:"All intervals done"}<small>${workLeft>0?"work segments remaining":"cool-down, you're home"}</small></div>
    ${remHtml}
    <div class="big-bar"><div id="bigBar"></div></div>
@@ -626,6 +659,7 @@ function bigHTML(){const s=curStep(),nx=P.tl[P.idx+1];P.lastIdx=P.idx;const k=KI
    <div class="big-belt"><span id="bigBelt">Belt ${mark(P.idx>0?P.tl[P.idx-1].endsAt:0)} ${distLabel()}</span><span>Total ${mark(total)} ${distLabel()}</span></div>
    ${s.note?`<p class="big-note">${esc(s.note)}</p>`:""}
    <div class="big-next"><span class="lab">Up next</span><span class="v">${nxText}</span></div>
+   </div></div>
    <div class="big-controls"><button class="btn-pause" data-act="p-toggle">${P.paused?"Resume":"Pause"}</button>
     <button class="btn-next" data-act="p-next">${nx?"NEXT SEGMENT":"FINISH"}<small>${hint}</small></button></div>
    <div class="big-sub"><button data-act="p-back" ${P.idx===0?"disabled":""}>← Back</button><button data-act="p-end">End workout</button></div>${locked?lockHTML():""}</div>`}
